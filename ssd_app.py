@@ -45,11 +45,11 @@ def initialize_supabase_connection():
     """
     try:
         # First try to get credentials from Streamlit secrets (for Streamlit Cloud)
-        supabase_config = st.secrets.get("supabase", {})
+        supabase_config = st.secrets.get("connections", {}).get("supabase", {})
         
         # Get URL and key from config
         supabase_url = supabase_config.get("url")
-        supabase_key = supabase_config.get("anon_key")
+        supabase_key = supabase_config.get("key") # anon_key
         
         # If not found in secrets, try environment variables (for local development)
         if not supabase_url or not supabase_key:
@@ -663,18 +663,76 @@ def get_chemical_options(uploaded_file):
         # General error catching during the read attempt
         st.error(f"Error reading file for chemical list: {e}")
         return ["-- Error Reading File --"]
-st.title("🧪 Species Sensitivity Distribution (SSD) Generator")
+
+# Set page configuration first
+st.set_page_config(layout="wide")
+
+def initialize_supabase_connection():
+    """Initialize and test Supabase connection with proper error handling.
+    Returns:
+        SupabaseConnection: The initialized Supabase connection or None if failed
+    """
+    try:
+        # First try to get credentials from Streamlit secrets (for Streamlit Cloud)
+        supabase_config = st.secrets.get("connections", {}).get("supabase", {})
+        
+        # Get URL and key from config
+        supabase_url = supabase_config.get("url")
+        supabase_key = supabase_config.get("key") # anon_key
+        
+        # If not found in secrets, try environment variables (for local development)
+        if not supabase_url or not supabase_key:
+            # Try to get from environment variables
+            supabase_url = os.getenv("SUPABASE_URL")
+            supabase_key = os.getenv("SUPABASE_KEY")
+
+        if not supabase_url or not supabase_key:
+            raise ValueError("Supabase configuration not found. Please configure your credentials in Streamlit secrets or environment variables.")
+
+        # Create Supabase connection
+        try:
+            supabase_conn = st.connection(
+                "supabase",
+                type=SupabaseConnection,
+                url=supabase_url,
+                key=supabase_key
+            )
+            
+            # Test the connection
+            try:
+                # Try a simple query to test the connection
+                test_result = supabase_conn.table("chemicals").select("name").limit(1).execute()
+                if len(test_result.data) > 0:
+                    st.success("Successfully connected to Supabase!")
+                    return supabase_conn
+                else:
+                    raise ValueError("Supabase connection successful but chemicals table not found")
+            except Exception as e:
+                raise ValueError(f"Failed to test Supabase connection: {str(e)}")
+        except Exception as e:
+            raise ValueError(f"Failed to create Supabase connection: {str(e)}")
+
+    except Exception as e:
+        st.error(f"Failed to initialize Supabase connection: {str(e)}")
+        raise e
+
+# Initialize Supabase connection
+supabase_conn = initialize_supabase_connection()
+
+# If connection failed, don't proceed with the rest of the app
+if supabase_conn is None:
+    st.stop()
+
+# Initialize session state
+if 'chemicals_loaded' not in st.session_state:
+    st.session_state.chemicals_loaded = False
+    st.session_state.chemicals_data = []
 
 # Using pre-initialized Supabase connection from initialization section
 if supabase_conn:
     with st.expander("Chemical Management", expanded=False):
         st.write("Manage your chemical database:")
         
-        # Add fetch chemicals button with unique key
-        if st.button("Fetch Chemical List from Supabase", key="fetch_chemicals_btn"):
-            with st.spinner("Fetching chemical list from Supabase..."):
-                fetch_chemicals()
-
         # Add search box
         search_term = st.text_input("Search Chemicals", key="chem_search")
         
@@ -711,39 +769,29 @@ if supabase_conn:
             help="Select media types to filter the chemicals based on their measurement units"
         )
 
-# Show search results
-if st.session_state.chemicals_loaded:
+        # Add fetch chemicals button with unique key
+        if st.button("Fetch Chemical List from Supabase", key="fetch_chemicals_btn"):
             try:
-                # Fetch chemicals from database
-                chemicals = supabase_conn.table("chemicals").select("name, cas_number").execute()
-                
-                # Convert to DataFrame and add unique identifier
-                if chemicals:
-                    df = pd.DataFrame(chemicals.data)
-                else:
-                    df = pd.DataFrame()
-                df['id'] = df.index + 1
-                
-                # Add chemical group column
-                df['group'] = df['name'].apply(get_chemical_group)
-                
-                # Add CAS number column (if not present)
-                if 'cas_number' not in df.columns:
-                    df['cas_number'] = ""
-                
-                # Add media classification based on units
-                df['media'] = df['cas_number'].apply(lambda x: get_media_from_unit(x) if x else 'Unknown')
-                
-                # Add occurrence count
-                df['occurrences'] = 1
-                
-                # Store in session state
-                st.session_state.chemicals_data = df.to_dict('records')
-                st.session_state.chemicals_loaded = True
-                
-                # Show success message
-                st.success("Successfully fetched chemicals!")
-                
+                with st.spinner("Fetching chemical list from Supabase..."):
+                    fetch_chemicals()
+                    df['group'] = df['name'].apply(get_chemical_group)
+                    
+                    # Add CAS number column (if not present)
+                    if 'cas_number' not in df.columns:
+                        df['cas_number'] = ""
+                    
+                    # Add media classification based on units
+                    df['media'] = df['cas_number'].apply(lambda x: get_media_from_unit(x) if x else 'Unknown')
+                    
+                    # Add occurrence count
+                    df['occurrences'] = 1
+                    
+                    # Store in session state
+                    st.session_state.chemicals_data = df.to_dict('records')
+                    st.session_state.chemicals_loaded = True
+                    
+                    # Show success message
+                    st.success("Successfully fetched chemicals!")
             except Exception as e:
                 st.error(f"Failed to fetch chemicals: {str(e)}")
                 st.exception(e)
