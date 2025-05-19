@@ -556,11 +556,11 @@ key = "your_supabase_key"
         with st.spinner("Fetching chemical list from Supabase..."):
             try:
                 # Fetch chemicals from database
-                chemicals = supabase_conn.table("toxicology_data").select("chemical_name, test_cas, conc1_unit").execute()
+                chemicals = supabase_conn.table("chemicals").select("name, cas_number").execute()
                 
                 # Convert to DataFrame and add unique identifier
                 if chemicals:
-                    df = pd.DataFrame(chemicals)
+                    df = pd.DataFrame(chemicals.data)
                 else:
                     df = pd.DataFrame()
                 df['id'] = df.index + 1
