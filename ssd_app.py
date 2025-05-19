@@ -872,75 +872,75 @@ def fetch_chemicals():
             st.write(f"Message: {str(e)}")
             st.exception(e)  # Show full traceback
             raise e  # Re-raise to terminate the app if needed
-    # Add fetch chemicals button with unique key
-    if st.button("Fetch Chemical List from Supabase", key="fetch_chemicals_btn"):
-        fetch_chemicals()
+
+# Add fetch chemicals button with unique key
+if st.button("Fetch Chemical List from Supabase", key="fetch_chemicals_btn"):
+    fetch_chemicals()
+
+# Show search results
+if st.session_state.chemicals_loaded:
+    # Filter by search term
+    filtered_chems = st.session_state.chemicals_data
+    if search_term:
+        filtered_chems = [chem for chem in filtered_chems 
+                        if search_term.lower() in chem['name'].lower()]
     
-    # Show search results
-    if st.session_state.chemicals_loaded:
-        # Filter by search term
-        filtered_chems = st.session_state.chemicals_data
-        if search_term:
-            filtered_chems = [chem for chem in filtered_chems 
-                            if search_term.lower() in chem['name'].lower()]
-        
-        # Filter by groups
-        if 'All' not in group_options:
-            filtered_chems = [chem for chem in filtered_chems 
-                            if chem['group'] in group_options]
-        
-        if filtered_chems:
-            st.write(f"Found {len(filtered_chems)} matching chemicals:")
-            chem_df = pd.DataFrame(filtered_chems)
-            
-            # Add multi-select for chemicals
-            selected_chemicals = st.multiselect(
-                "Select Chemicals",
-                options=chem_df['name'].tolist(),
-                help="Select multiple chemicals by holding Ctrl/Cmd"
-            )
-            
-            if selected_chemicals:
-                # Show selected chemicals
-                selected_df = chem_df[chem_df['name'].isin(selected_chemicals)]
-                st.write("Selected Chemicals:")
-                st.dataframe(selected_df, hide_index=True)
-                
-                # Add download option for selected chemicals
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("Download Selected Chemicals", key="download_selected_btn_1"):
-                        csv = selected_df.to_csv(index=False)
-                        st.download_button(
-                            label="Download CSV",
-                            data=csv,
-                            file_name="selected_chemicals.csv",
-                            mime="text/csv",
-                            key="download_selected_csv_1"
-                        )
-                with col2:
-                    if st.button("Download Complete List", key="download_complete_btn_1"):
-                        chem_df = pd.DataFrame(st.session_state.chemicals_data)
-                        csv = chem_df.to_csv(index=False)
-                        st.download_button(
-                            label="Download CSV",
-                            data=csv,
-                            file_name="complete_chemical_list.csv",
-                            mime="text/csv",
-                            key="download_complete_csv_1"
-                        )
-        else:
-            st.info("No chemicals found matching your filters.")
+    # Filter by groups
+    if 'All' not in group_options:
+        filtered_chems = [chem for chem in filtered_chems 
+                        if chem['group'] in group_options]
     
-    # Add chemical count 
-    if st.session_state.chemicals_loaded:
-        chem_count = len(st.session_state.chemicals_data)
-        st.write(f"Total unique chemicals in database: {chem_count}")
+    if filtered_chems:
+        st.write(f"Found {len(filtered_chems)} matching chemicals:")
+        chem_df = pd.DataFrame(filtered_chems)
+        
+        # Add multi-select for chemicals
+        selected_chemicals = st.multiselect(
+            "Select Chemicals",
+            options=chem_df['name'].tolist(),
+            help="Select multiple chemicals by holding Ctrl/Cmd"
+        )
+        
+        if selected_chemicals:
+            # Show selected chemicals
+            selected_df = chem_df[chem_df['name'].isin(selected_chemicals)]
+            st.write("Selected Chemicals:")
+            st.dataframe(selected_df, hide_index=True)
+            
+            # Add download option for selected chemicals
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("Download Selected Chemicals", key="download_selected_btn_1"):
+                    csv = selected_df.to_csv(index=False)
+                    st.download_button(
+                        label="Download CSV",
+                        data=csv,
+                        file_name="selected_chemicals.csv",
+                        mime="text/csv",
+                        key="download_selected_csv_1"
+                    )
+            with col2:
+                if st.button("Download Complete List", key="download_complete_btn_1"):
+                    chem_df = pd.DataFrame(st.session_state.chemicals_data)
+                    csv = chem_df.to_csv(index=False)
+                    st.download_button(
+                        label="Download CSV",
+                        data=csv,
+                        file_name="complete_chemical_list.csv",
+                        mime="text/csv",
+                        key="download_complete_csv_1"
+                    )
+    else:
+        st.info("No chemicals found matching your filters.")
+
+# Add chemical count 
+if st.session_state.chemicals_loaded:
+    chem_count = len(st.session_state.chemicals_data)
+    st.write(f"Total unique chemicals in database: {chem_count}")
 
 st.markdown("""
 Upload your **processed** ecotoxicity data file (e.g., a `.csv` containing the required columns:
 `test_cas`, `chemical_name`, `species_scientific_name`, `species_common_name`, `species_group`,
-{{ ... }}
 `endpoint`, `effect`, `conc1_mean`, `conc1_unit`). Select the chemical from the dropdown and
 configure parameters to generate the SSD.
 """)
