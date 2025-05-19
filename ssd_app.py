@@ -663,8 +663,6 @@ def get_chemical_options(uploaded_file):
         # General error catching during the read attempt
         st.error(f"Error reading file for chemical list: {e}")
         return ["-- Error Reading File --"]
-
-# --- Streamlit App UI ---
 st.title("🧪 Species Sensitivity Distribution (SSD) Generator")
 
 # Using pre-initialized Supabase connection from initialization section
