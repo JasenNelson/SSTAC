@@ -4,6 +4,8 @@ import numpy as np
 import scipy.stats
 import plotly.graph_objects as go
 from io import StringIO
+import supabase
+from st_supabase_connection import SupabaseConnection
 
 # --- Configuration --- (Keep this section as is)
 ECOTOX_EXPECTED_COLS = {
@@ -24,6 +26,249 @@ TAXONOMIC_MAPPING = {
 }
 ACUTE_ENDPOINTS = ['LC50', 'EC50']
 CHRONIC_ENDPOINTS = ['NOEC', 'LOEC', 'EC10']
+
+# --- Media Classification based on Units ---
+MEDIA_UNITS = {
+    # Water/Wastewater
+    'Water/Wastewater': [
+        'mg/L', 'µg/L', 'ng/L', 'pg/L',  # Concentration
+        'mg/m³', 'µg/m³', 'ng/m³', 'pg/m³',  # Volume
+        'ppm', 'ppb', 'ppt',  # Parts per
+        'mg/kg', 'µg/kg', 'ng/kg', 'pg/kg'  # Sediment/Water
+    ],
+    # Soil/Sediment
+    'Soil/Sediment': [
+        'mg/kg', 'µg/kg', 'ng/kg', 'pg/kg',  # Concentration
+        'ppm', 'ppb', 'ppt',  # Parts per
+        'mg/L', 'µg/L', 'ng/L', 'pg/L',  # Pore water
+        '%', 'ppt'  # Percentage
+    ],
+    # Air
+    'Air': [
+        'mg/m³', 'µg/m³', 'ng/m³', 'pg/m³',  # Concentration
+        'ppm', 'ppb', 'ppt',  # Parts per
+        'mg/L', 'µg/L', 'ng/L', 'pg/L',  # Volume
+        '%', 'ppt'  # Percentage
+    ],
+    # Biota
+    'Biota': [
+        'mg/kg', 'µg/kg', 'ng/kg', 'pg/kg',  # Concentration
+        'ppm', 'ppb', 'ppt',  # Parts per
+        'mg/L', 'µg/L', 'ng/L', 'pg/L',  # Tissue
+        '%', 'ppt'  # Percentage
+    ],
+    # Food
+    'Food': [
+        'mg/kg', 'µg/kg', 'ng/kg', 'pg/kg',  # Concentration
+        'ppm', 'ppb', 'ppt',  # Parts per
+        '%', 'ppt'  # Percentage
+    ]
+}
+
+# --- Media Classification Function ---
+def get_media_from_unit(unit):
+    """
+    Classify chemical based on its measurement unit to determine the likely media it's measured in.
+    Returns the primary media if unit matches exactly, or 'Unknown' if no match.
+    """
+    if not unit:
+        return "Unknown"
+    
+    # Normalize unit to lowercase for matching
+    unit = unit.lower().strip()
+    
+    # Check each media category
+    for media, units in MEDIA_UNITS.items():
+        if unit in [u.lower() for u in units]:
+            return media
+    
+    # If no exact match, try partial matches
+    if any(u in unit for u in ['mg/l', 'ug/l', 'ng/l', 'pg/l', 'ppm', 'ppb', 'ppt']):
+        return "Water/Wastewater"
+    elif any(u in unit for u in ['mg/kg', 'ug/kg', 'ng/kg', 'pg/kg']):
+        return "Soil/Sediment"
+    elif any(u in unit for u in ['mg/m3', 'ug/m3', 'ng/m3', 'pg/m3']):
+        return "Air"
+    
+    return "Unknown"
+
+# --- Chemical Group Classification ---
+def get_chemical_group(species_group):
+    """
+    Classify chemicals into groups based on species group and other properties.
+    This is a comprehensive classification system that categorizes chemicals based on their properties.
+    """
+    if not species_group:
+        return "Unknown"
+    
+    # Convert to lowercase for easier matching
+    species_group = species_group.lower()
+    
+    # Organic Compounds
+    if any(org in species_group for org in ['organic', 'carbon', 'hydrocarbon', 'alkyl', 'aryl', 'benzene']):
+        if any(aliph in species_group for aliph in ['alkane', 'alkene', 'alkyne', 'aliphatic']):
+            return "Organic Compounds (Aliphatic)"
+        elif any(arom in species_group for arom in ['aromatic', 'benzene', 'phenyl', 'aryl']):
+            return "Organic Compounds (Aromatic)"
+        else:
+            return "Organic Compounds (Other)"
+    
+    # Inorganic Compounds
+    if any(inorg in species_group for inorg in ['inorganic', 'salt', 'oxide', 'hydroxide']):
+        if any(acid in species_group for acid in ['acid', 'hydrochloric', 'sulfuric', 'nitric']):
+            return "Inorganic Compounds (Acids)"
+        elif any(base in species_group for base in ['base', 'alkali', 'hydroxide', 'ammonia']):
+            return "Inorganic Compounds (Bases)"
+        elif any(salt in species_group for salt in ['salt', 'chloride', 'sulfate', 'nitrate']):
+            return "Inorganic Compounds (Salts)"
+        else:
+            return "Inorganic Compounds (Other)"
+    
+    # Metals
+    if any(metal in species_group for metal in ['metal', 'alloy', 'oxide', 'hydroxide', 'sulfide']):
+        if any(heavy in species_group for heavy in ['lead', 'mercury', 'cadmium', 'arsenic']):
+            return "Metals (Heavy Metals)"
+        elif any(trans in species_group for trans in ['transition', 'iron', 'copper', 'nickel']):
+            return "Metals (Transition Metals)"
+        elif any(alkali in species_group for alkali in ['sodium', 'potassium', 'lithium']):
+            return "Metals (Alkali Metals)"
+        else:
+            return "Metals (Other)"
+    
+    # Pesticides
+    if any(pest in species_group for pest in ['pesticide', 'herbicide', 'fungicide', 'insecticide', 'rodenticide']):
+        if any(herb in species_group for herb in ['herbicide', 'weed', 'plant', 'weedkiller']):
+            return "Pesticides (Herbicides)"
+        elif any(insect in species_group for insect in ['insecticide', 'bug', 'insect', 'pest']):
+            return "Pesticides (Insecticides)"
+        elif any(fung in species_group for fung in ['fungicide', 'mold', 'fungus', 'mildew']):
+            return "Pesticides (Fungicides)"
+        else:
+            return "Pesticides (Other)"
+    
+    # Pharmaceuticals
+    if any(pharm in species_group for pharm in ['drug', 'pharmaceutical', 'medicine', 'antibiotic', 'antibacterial']):
+        if any(anti in species_group for anti in ['antibiotic', 'penicillin', 'amoxicillin', 'tetracycline']):
+            return "Pharmaceuticals (Antibiotics)"
+        elif any(anti in species_group for anti in ['antiviral', 'virus', 'influenza', 'herpes']):
+            return "Pharmaceuticals (Antivirals)"
+        elif any(pain in species_group for pain in ['analgesic', 'pain', 'aspirin', 'ibuprofen', 'acetaminophen']):
+            return "Pharmaceuticals (Analgesics)"
+        else:
+            return "Pharmaceuticals (Other)"
+    
+    # Plastics and Polymers
+    if any(plastic in species_group for plastic in ['plastic', 'polymer', 'polyethylene', 'polypropylene', 'polyvinyl']):
+        if any(thermo in species_group for thermo in ['thermoplastic', 'polyethylene', 'polypropylene', 'polyvinyl']):
+            return "Plastics (Thermoplastics)"
+        elif any(thermo in species_group for thermo in ['thermoset', 'epoxy', 'phenolic', 'polyurethane']):
+            return "Plastics (Thermosets)"
+        elif any(bio in species_group for bio in ['biodegradable', 'bioplastic', 'compostable', 'PLA']):
+            return "Plastics (Biodegradable)"
+        else:
+            return "Plastics (Other)"
+    
+    # Solvents
+    if any(solvent in species_group for solvent in ['solvent', 'alcohol', 'ether', 'ketone', 'ester', 'benzene']):
+        if any(polar in species_group for polar in ['polar', 'water', 'alcohol', 'ether']):
+            return "Solvents (Polar)"
+        elif any(non in species_group for non in ['non-polar', 'hydrocarbon', 'hexane', 'benzene']):
+            return "Solvents (Non-polar)"
+        elif any(aprot in species_group for aprot in ['aprotic', 'dichloromethane', 'acetone', 'acetonitrile']):
+            return "Solvents (Aprotic)"
+        else:
+            return "Solvents (Other)"
+    
+    # Surfactants
+    if any(surf in species_group for surf in ['surfactant', 'detergent', 'emulsifier', 'tenside', 'wetting agent']):
+        if any(anion in species_group for anion in ['anionic', 'sulfate', 'sulfonate', 'carboxylate']):
+            return "Surfactants (Anionic)"
+        elif any(cation in species_group for cation in ['cationic', 'quaternary', 'ammonium', 'amine']):
+            return "Surfactants (Cationic)"
+        elif any(non in species_group for non in ['non-ionic', 'alkoxylate', 'ether', 'ester']):
+            return "Surfactants (Non-ionic)"
+        else:
+            return "Surfactants (Other)"
+    
+    # Dyes and Pigments
+    if any(dye in species_group for dye in ['dye', 'pigment', 'colorant', 'stain', 'paint', 'ink']):
+        if any(acid in species_group for acid in ['acid', 'sulfonic', 'carboxylic', 'dye']):
+            return "Dyes (Acidic)"
+        elif any(base in species_group for base in ['basic', 'amine', 'azo', 'dye']):
+            return "Dyes (Basic)"
+        elif any(direct in species_group for direct in ['direct', 'azo', 'anthraquinone', 'dye']):
+            return "Dyes (Direct)"
+        else:
+            return "Dyes (Other)"
+    
+    # Industrial Chemicals
+    if any(ind in species_group for ind in ['industrial', 'chemical', 'reagent', 'catalyst', 'additive', 'lubricant']):
+        if any(corro in species_group for corro in ['corrosive', 'acid', 'base', 'hydrofluoric']):
+            return "Industrial Chemicals (Corrosives)"
+        elif any(flam in species_group for flam in ['flammable', 'solvent', 'fuel', 'petroleum']):
+            return "Industrial Chemicals (Flammables)"
+        elif any(tox in species_group for tox in ['toxic', 'poison', 'cyanide', 'mercury']):
+            return "Industrial Chemicals (Toxic)"
+        else:
+            return "Industrial Chemicals (Other)"
+    
+    # Nanomaterials
+    if any(nano in species_group for nano in ['nano', 'nanoparticle', 'nanomaterial', 'quantum dot', 'carbon nanotube']):
+        if any(metal in species_group for metal in ['metallic', 'gold', 'silver', 'copper']):
+            return "Nanomaterials (Metallic)"
+        elif any(carbon in species_group for carbon in ['carbon', 'graphene', 'nanotube', 'fullerene']):
+            return "Nanomaterials (Carbon-based)"
+        elif any(oxide in species_group for oxide in ['oxide', 'silica', 'titanium', 'zinc']):
+            return "Nanomaterials (Oxide)"
+        else:
+            return "Nanomaterials (Other)"
+    
+    # Radioactive Substances
+    if any(radio in species_group for radio in ['radioactive', 'isotope', 'radiation', 'nuclear']):
+        if any(alpha in species_group for alpha in ['alpha', 'helium', 'radon', 'polonium']):
+            return "Radioactive Substances (Alpha)"
+        elif any(beta in species_group for beta in ['beta', 'electron', 'strontium', 'cesium']):
+            return "Radioactive Substances (Beta)"
+        elif any(gamma in species_group for gamma in ['gamma', 'photon', 'cobalt', 'iridium']):
+            return "Radioactive Substances (Gamma)"
+        else:
+            return "Radioactive Substances (Other)"
+    
+    # Biocides
+    if any(bio in species_group for bio in ['biocide', 'disinfectant', 'antimicrobial', 'preservative', 'fungicide']):
+        if any(disin in species_group for disin in ['disinfectant', 'sterilizer', 'bleach', 'alcohol']):
+            return "Biocides (Disinfectants)"
+        elif any(anti in species_group for anti in ['antimicrobial', 'antibacterial', 'antifungal', 'antiviral']):
+            return "Biocides (Antimicrobials)"
+        elif any(pres in species_group for pres in ['preservative', 'fungicide', 'mold', 'rot']):
+            return "Biocides (Preservatives)"
+        else:
+            return "Biocides (Other)"
+    
+    # Food Additives
+    if any(food in species_group for food in ['food', 'additive', 'preservative', 'emulsifier', 'stabilizer', 'flavor']):
+        if any(pres in species_group for pres in ['preservative', 'sodium', 'benzoate', 'sorbate']):
+            return "Food Additives (Preservatives)"
+        elif any(color in species_group for color in ['colorant', 'dye', 'pigment', 'food color']):
+            return "Food Additives (Colorants)"
+        elif any(emul in species_group for emul in ['emulsifier', 'stabilizer', 'lethicin', 'gum']):
+            return "Food Additives (Emulsifiers)"
+        else:
+            return "Food Additives (Other)"
+    
+    # Cosmetics
+    if any(cos in species_group for cos in ['cosmetic', 'personal care', 'skin care', 'hair care', 'makeup']):
+        if any(skin in species_group for skin in ['skin', 'cream', 'lotion', 'serum', 'moisturizer']):
+            return "Cosmetics (Skin Care)"
+        elif any(hair in species_group for hair in ['hair', 'shampoo', 'conditioner', 'dye', 'gel']):
+            return "Cosmetics (Hair Care)"
+        elif any(make in species_group for make in ['makeup', 'foundation', 'lipstick', 'eyeshadow', 'mascara']):
+            return "Cosmetics (Makeup)"
+        else:
+            return "Cosmetics (Other)"
+    
+    # Default to Organic Compounds if no specific category matches
+    return "Organic Compounds (Other)"
 
 # --- Helper Functions --- (Keep these as is: map_taxonomic_group, get_distribution, calculate_ssd, create_ssd_plot)
 def map_taxonomic_group(ecotox_group):
@@ -141,9 +386,222 @@ def get_chemical_options(uploaded_file):
         return ["-- Error Reading File --"]
 
 # --- Streamlit App UI ---
-
 st.set_page_config(layout="wide")
 st.title("🧪 Species Sensitivity Distribution (SSD) Generator")
+
+# Initialize Supabase connection
+supabase_conn = st.experimental_connection("supabase", type=SupabaseConnection)
+
+# Create a container for Supabase controls
+supabase_container = st.container()
+with supabase_container:
+    st.subheader("Supabase Connection")
+    
+    # Initialize session state for chemical data
+    if 'chemicals_loaded' not in st.session_state:
+        st.session_state.chemicals_loaded = False
+    if 'chemicals_data' not in st.session_state:
+        st.session_state.chemicals_data = []
+    
+    # Add Supabase connection button with loading state
+    if st.button("Connect to Supabase"):
+        try:
+            st.success("Successfully connected to Supabase!")
+        except Exception as e:
+            st.error(f"Failed to connect to Supabase: {e}")
+            st.write("Please check your Supabase credentials in .streamlit/secrets.toml")
+            st.write("Expected format:")
+            st.code("""
+[connections.supabase]
+url = "your_supabase_url"
+key = "your_supabase_key"
+""")
+    
+    # Add search functionality
+    search_term = st.text_input("Search for chemicals:", "")
+    
+    # Add chemical group filter
+    group_options = st.multiselect(
+        "Filter by Chemical Group",
+        options=['All',
+                'Organic Compounds (Aliphatic)', 'Organic Compounds (Aromatic)',
+                'Inorganic Compounds (Acids)', 'Inorganic Compounds (Bases)', 'Inorganic Compounds (Salts)',
+                'Metals (Heavy Metals)', 'Metals (Transition Metals)', 'Metals (Alkali Metals)',
+                'Pesticides (Herbicides)', 'Pesticides (Insecticides)', 'Pesticides (Fungicides)',
+                'Pharmaceuticals (Antibiotics)', 'Pharmaceuticals (Antivirals)', 'Pharmaceuticals (Analgesics)',
+                'Plastics (Thermoplastics)', 'Plastics (Thermosets)', 'Plastics (Biodegradable)',
+                'Solvents (Polar)', 'Solvents (Non-polar)', 'Solvents (Aprotic)',
+                'Surfactants (Anionic)', 'Surfactants (Cationic)', 'Surfactants (Non-ionic)',
+                'Dyes (Acidic)', 'Dyes (Basic)', 'Dyes (Direct)',
+                'Industrial Chemicals (Corrosives)', 'Industrial Chemicals (Flammables)', 'Industrial Chemicals (Toxic)',
+                'Nanomaterials (Metallic)', 'Nanomaterials (Carbon-based)', 'Nanomaterials (Oxide)',
+                'Radioactive Substances (Alpha)', 'Radioactive Substances (Beta)', 'Radioactive Substances (Gamma)',
+                'Biocides (Disinfectants)', 'Biocides (Antimicrobials)', 'Biocides (Preservatives)',
+                'Food Additives (Preservatives)', 'Food Additives (Colorants)', 'Food Additives (Emulsifiers)',
+                'Cosmetics (Skin Care)', 'Cosmetics (Hair Care)', 'Cosmetics (Makeup)'],
+        default=['All'],
+        help="Select chemical groups to filter the search results"
+    )
+
+    # Add media filter
+    media_options = st.multiselect(
+        "Filter by Media",
+        options=['All', 'Water/Wastewater', 'Soil/Sediment', 'Air', 'Biota', 'Food'],
+        default=['All'],
+        help="Select media types to filter the chemicals based on their measurement units"
+    )
+
+    # Add visualization of media distribution
+    with st.expander("Media Distribution", expanded=False):
+        media_counts = df['media'].value_counts()
+        fig = px.pie(values=media_counts.values, names=media_counts.index,
+                    title="Chemical Distribution by Media",
+                    color_discrete_sequence=px.colors.qualitative.Plotly)
+        st.plotly_chart(fig, use_container_width=True)
+    
+    # Add fetch chemicals button with loading state
+    if st.button("Fetch Chemical List from Supabase"):
+        with st.spinner("Fetching chemical list from Supabase..."):
+            try:
+                # Fetch chemicals from database
+                chemicals = supabase_conn.table("toxicology_data").select("chemical_name, test_cas, conc1_unit").execute()
+                
+                # Convert to DataFrame and add unique identifier
+                df = pd.DataFrame(chemicals.data)
+                df['id'] = df.index + 1
+                
+                # Add chemical group column
+                df['group'] = df['chemical_name'].apply(get_chemical_group)
+                
+                # Add CAS number column (if not present)
+                if 'test_cas' not in df.columns:
+                    df['test_cas'] = ""
+                
+                # Add media classification based on units
+                df['media'] = df['conc1_unit'].apply(get_media_from_unit)
+                
+                # Add occurrence count
+                df['count'] = df.groupby('chemical_name')['chemical_name'].transform('count')
+                
+                # Process chemicals
+                chem_data = []
+                seen_chemicals = set()
+                chemical_groups = {}
+                
+                for chem in df.itertuples(index=False):
+                    if chem.chemical_name and chem.chemical_name not in seen_chemicals:
+                        # Determine chemical group based on species group
+                        species_group = chem.group if chem.group else "Unknown"
+                        chemical_group = get_chemical_group(species_group)
+                        
+                        # Track chemical groups
+                        if chemical_group not in chemical_groups:
+                            chemical_groups[chemical_group] = 0
+                        chemical_groups[chemical_group] += 1
+                        
+                        chem_data.append({
+                            'name': chem['chemical_name'],
+                            'cas': chem['test_cas'] if chem['test_cas'] else "N/A",
+                            'count': 1,
+                            'group': chemical_group
+                        })
+                        seen_chemicals.add(chem['chemical_name'])
+                    elif chem['chemical_name'] in seen_chemicals:
+                        # Update count for existing chemicals
+                        for item in chem_data:
+                            if item['name'] == chem['chemical_name']:
+                                item['count'] += 1
+                                break
+                
+                # Sort chemicals by name
+                chem_data.sort(key=lambda x: x['name'].lower())
+                
+                # Store in session state
+                st.session_state.chemicals_data = chem_data
+                st.session_state.chemicals_loaded = True
+                
+                # Update chemical options
+                if 'file_processed_chem_list' not in st.session_state:
+                    st.session_state.file_processed_chem_list = []
+                st.session_state.file_processed_chem_list = [chem['name'] for chem in chem_data]
+                
+                st.success(f"Successfully fetched {len(chem_data)} unique chemicals from Supabase!")
+                
+                # Show chemical group distribution
+                st.write("Chemical Group Distribution:")
+                group_df = pd.DataFrame(list(chemical_groups.items()), columns=['Group', 'Count'])
+                st.bar_chart(group_df.set_index('Group'))
+                
+                # Show chemical details
+                if st.checkbox("Show chemical details"):
+                    st.write("Chemical Details:")
+                    chem_df = pd.DataFrame(chem_data)
+                    st.dataframe(chem_df, hide_index=True)
+                    
+            except Exception as e:
+                st.error(f"Failed to fetch chemicals: {e}")
+                st.write("Error details:")
+                st.write(f"Type: {type(e).__name__}")
+                st.write(f"Message: {str(e)}")
+    
+    # Show search results
+    if st.session_state.chemicals_loaded:
+        # Filter by search term
+        filtered_chems = st.session_state.chemicals_data
+        if search_term:
+            filtered_chems = [chem for chem in filtered_chems 
+                            if search_term.lower() in chem['name'].lower()]
+        
+        # Filter by groups
+        if 'All' not in group_options:
+            filtered_chems = [chem for chem in filtered_chems 
+                            if chem['group'] in group_options]
+        
+        if filtered_chems:
+            st.write(f"Found {len(filtered_chems)} matching chemicals:")
+            chem_df = pd.DataFrame(filtered_chems)
+            
+            # Add multi-select for chemicals
+            selected_chemicals = st.multiselect(
+                "Select Chemicals",
+                options=chem_df['name'].tolist(),
+                help="Select multiple chemicals by holding Ctrl/Cmd"
+            )
+            
+            if selected_chemicals:
+                # Show selected chemicals
+                selected_df = chem_df[chem_df['name'].isin(selected_chemicals)]
+                st.write("Selected Chemicals:")
+                st.dataframe(selected_df, hide_index=True)
+                
+                # Add download option for selected chemicals
+                if st.button("Download Selected Chemicals"):
+                    csv = selected_df.to_csv(index=False)
+                    st.download_button(
+                        label="Download CSV",
+                        data=csv,
+                        file_name="selected_chemicals.csv",
+                        mime="text/csv"
+                    )
+        else:
+            st.info("No chemicals found matching your filters.")
+    
+    # Add chemical count
+    if st.session_state.chemicals_loaded:
+        chem_count = len(st.session_state.chemicals_data)
+        st.write(f"Total unique chemicals in database: {chem_count}")
+        
+        # Add download option for all chemicals
+        if st.button("Download Complete List"):
+            chem_df = pd.DataFrame(st.session_state.chemicals_data)
+            csv = chem_df.to_csv(index=False)
+            st.download_button(
+                label="Download CSV",
+                data=csv,
+                file_name="complete_chemical_list.csv",
+                mime="text/csv"
+            )
+
 st.markdown("""
 Upload your **processed** ecotoxicity data file (e.g., a `.csv` containing the required columns:
 `test_cas`, `chemical_name`, `species_scientific_name`, `species_common_name`, `species_group`,
