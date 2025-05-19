@@ -6,7 +6,7 @@ from io import StringIO
 import supabase
 from st_supabase_connection import SupabaseConnection
 
-# Initialize Supabase connection with direct configuration
+# Initialize Supabase connection with explicit parameters
 try:
     # Get secrets from Streamlit configuration
     supabase_config = st.secrets.get("supabase", {})
@@ -29,12 +29,16 @@ try:
         raise ValueError("Supabase URL or key not configured")
     
     # Create Supabase client directly
-    client = create_client(supabase_url, supabase_key)
-    
-    # Test the connection
     try:
-        # Try a simple query to test the connection
+        # Create Supabase client with explicit parameters
+        client = supabase.Client(
+            supabase_url=supabase_url,
+            supabase_key=supabase_key
+        )
+        
+        # Test the connection
         test_query = client.table("toxicology_data").select("chemical_name").limit(1).execute()
+        
         if test_query.data:
             st.success("Successfully connected to Supabase!")
         else:
@@ -47,8 +51,11 @@ try:
             url=supabase_url,
             key=supabase_key
         )
+        
     except Exception as e:
-        st.error(f"Error testing Supabase connection: {str(e)}")
+        st.error(f"Error creating Supabase client: {str(e)}")
+        st.error(f"URL used: {supabase_url}")
+        st.error(f"Key provided: {bool(supabase_key)}")
         raise e
 
 except Exception as e:
