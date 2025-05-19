@@ -483,8 +483,7 @@ def get_chemical_options(uploaded_file):
 # --- Streamlit App UI ---
 st.title("🧪 Species Sensitivity Distribution (SSD) Generator")
 
-# Initialize Supabase connection
-supabase_conn = st.connection("supabase", type=SupabaseConnection)
+# Using pre-initialized Supabase connection from initialization section
 
 # Create a container for Supabase controls
 supabase_container = st.container()
