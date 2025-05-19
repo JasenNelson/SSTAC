@@ -565,7 +565,7 @@ key = "your_supabase_key"
                 chemicals = supabase_conn.table("toxicology_data").select("chemical_name, test_cas, conc1_unit").execute()
                 
                 # Convert to DataFrame and add unique identifier
-                df = pd.DataFrame(chemicals.data)
+                df = pd.DataFrame(chemicals.data) if chemicals.data else pd.DataFrame()
                 df['id'] = df.index + 1
                 
                 # Add chemical group column
