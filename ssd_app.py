@@ -6,9 +6,6 @@ from io import StringIO
 import supabase
 from st_supabase_connection import SupabaseConnection
 
-# Set page configuration first
-st.set_page_config(layout="wide")
-
 # Initialize Supabase connection with explicit parameters
 try:
     # Get secrets from Streamlit configuration
@@ -48,7 +45,7 @@ try:
             st.warning("Connected to Supabase, but no data found.")
             
         # If connection test succeeds, create Streamlit connection
-        supabase_conn = st.experimental_connection(
+        supabase_conn = st.connection(
             "supabase",
             type=SupabaseConnection,
             url=supabase_url,
@@ -481,7 +478,6 @@ def get_chemical_options(uploaded_file):
         return ["-- Error Reading File --"]
 
 # --- Streamlit App UI ---
-st.set_page_config(layout="wide")
 st.title("🧪 Species Sensitivity Distribution (SSD) Generator")
 
 # Initialize Supabase connection
