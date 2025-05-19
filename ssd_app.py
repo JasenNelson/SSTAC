@@ -6,6 +6,9 @@ from io import StringIO
 import supabase
 from st_supabase_connection import SupabaseConnection
 
+# Set page configuration first
+st.set_page_config(layout="wide")
+
 # Initialize Supabase connection with explicit parameters
 try:
     # Get secrets from Streamlit configuration
