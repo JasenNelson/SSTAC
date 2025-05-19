@@ -5,17 +5,29 @@ import plotly.graph_objects as go
 from io import StringIO
 import supabase
 from st_supabase_connection import SupabaseConnection
+import plotly.express as px
 
 # Set page configuration first
 st.set_page_config(layout="wide")
 
-# Initialize Supabase connection with explicit parameters
+# Initialize Supabase connection
 try:
     # Get secrets from Streamlit configuration
     supabase_config = st.secrets.get("supabase", {})
     
     if not supabase_config:
         st.error("Supabase configuration not found in secrets")
+        st.error("Please configure these in your Streamlit app settings:")
+        st.error("1. Go to your Streamlit app settings")
+        st.error("2. Add a new section called [supabase]")
+        st.error("3. Add the following keys:")
+        st.error("   - url: Your Supabase project URL")
+        st.error("   - anon_key: Your Supabase anon key")
+        st.error("""Example configuration:
+[supabase]
+url = "https://your-project.supabase.co"
+anon_key = "your-anon-key-here"
+""")
         raise ValueError("Supabase configuration not found")
     
     # Get URL and key from config
@@ -24,12 +36,17 @@ try:
     
     if not supabase_url or not supabase_key:
         st.error("Supabase URL or key not found in configuration")
-        st.error("Please configure these in your Streamlit app settings:")
-        st.error("1. In Streamlit app settings:")
-        st.error("   - [supabase]")
-        st.error("   - url: Your Supabase project URL")
-        st.error("   - anon_key: Your Supabase anon key")
+        st.error("Please check your Streamlit app settings and ensure:")
+        st.error("1. The [supabase] section exists")
+        st.error("2. Both 'url' and 'anon_key' are properly set")
+        st.error("3. No values are empty")
         raise ValueError("Supabase URL or key not configured")
+    
+    # Validate URL format
+    if not supabase_url.startswith("https://"):
+        st.error("Invalid Supabase URL format")
+        st.error("URL must start with 'https://' and end with '.supabase.co'")
+        raise ValueError("Invalid Supabase URL format")
     
     # Create Supabase connection
     try:
@@ -51,8 +68,10 @@ try:
             
     except Exception as e:
         st.error(f"Error creating Supabase connection: {str(e)}")
-        st.error(f"URL used: {supabase_url}")
-        st.error(f"Key provided: {bool(supabase_key)}")
+        st.error("Please check:")
+        st.error("1. Your Supabase URL and anon key are correct")
+        st.error("2. The URL is accessible")
+        st.error("3. The anon key has the correct permissions")
         raise e
 
 except Exception as e:
@@ -538,19 +557,6 @@ key = "your_supabase_key"
         help="Select media types to filter the chemicals based on their measurement units"
     )
 
-    # Add visualization of media distribution after data is loaded
-    if st.session_state.chemicals_loaded and st.session_state.chemicals_data:
-        with st.expander("Media Distribution", expanded=False):
-            # Create DataFrame from chemicals_data
-            df = pd.DataFrame(st.session_state.chemicals_data)
-            # Get media from units
-            df['media'] = df['conc1_unit'].apply(get_media_from_unit)
-            media_counts = df['media'].value_counts()
-            fig = px.pie(values=media_counts.values, names=media_counts.index,
-                        title="Chemical Distribution by Media",
-                        color_discrete_sequence=px.colors.qualitative.Plotly)
-            st.plotly_chart(fig, use_container_width=True)
-    
     # Add fetch chemicals button with loading state
     if st.button("Fetch Chemical List from Supabase"):
         with st.spinner("Fetching chemical list from Supabase..."):
@@ -566,7 +572,59 @@ key = "your_supabase_key"
                 df['id'] = df.index + 1
                 
                 # Add chemical group column
-                df['group'] = df['chemical_name'].apply(get_chemical_group)
+                df['group'] = df['name'].apply(get_chemical_group)
+                
+                # Add CAS number column (if not present)
+                if 'cas_number' not in df.columns:
+                    df['cas_number'] = ""
+                
+                # Add media classification based on units
+                df['media'] = df['cas_number'].apply(lambda x: get_media_from_unit(x) if x else 'Unknown')
+                
+                # Add occurrence count
+                df['occurrences'] = 1
+                
+                # Store in session state
+                st.session_state.chemicals_data = df.to_dict('records')
+                st.session_state.chemicals_loaded = True
+                
+                # Show success message
+                st.success("Successfully fetched chemicals!")
+                
+            except Exception as e:
+                st.error(f"Failed to fetch chemicals: {str(e)}")
+                st.exception(e)
+
+    # Add visualization of media distribution after data is loaded
+    if st.session_state.chemicals_loaded and st.session_state.chemicals_data:
+        with st.expander("Media Distribution", expanded=False):
+            try:
+                # Create DataFrame from chemicals_data
+                df = pd.DataFrame(st.session_state.chemicals_data)
+                # Get media from units
+                media_counts = df['media'].value_counts()
+                fig = px.pie(values=media_counts.values, names=media_counts.index,
+                            title="Chemical Distribution by Media",
+                            color_discrete_sequence=px.colors.qualitative.Plotly)
+                st.plotly_chart(fig, use_container_width=True)
+            except Exception as e:
+                st.error(f"Error generating media distribution visualization: {str(e)}")
+                st.exception(e)
+    if st.button("Fetch Chemical List from Supabase"):
+        with st.spinner("Fetching chemical list from Supabase..."):
+            try:
+                # Fetch chemicals from database
+                chemicals = supabase_conn.table("chemicals").select("name, cas_number").execute()
+                
+                # Convert to DataFrame and add unique identifier
+                if chemicals:
+                    df = pd.DataFrame(chemicals.data)
+                else:
+                    df = pd.DataFrame()
+                df['id'] = df.index + 1
+                
+                # Add chemical group column
+                df['group'] = df['name'].apply(get_chemical_group)
                 
                 # Add CAS number column (if not present)
                 if 'test_cas' not in df.columns:
