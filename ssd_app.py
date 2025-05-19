@@ -35,22 +35,18 @@ st.set_page_config(layout="wide")
 
 # Initialize Supabase connection
 try:
-    # Get Supabase credentials from Streamlit secrets
-    supabase_url = st.secrets.get("supabase", {}).get("url")
-    supabase_key = st.secrets.get("supabase", {}).get("anon_key")
+    # Get Supabase credentials from environment variables
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_key = os.getenv("SUPABASE_KEY")
     
     if not supabase_url or not supabase_key:
-        st.error("Supabase credentials not found in secrets")
-        st.error("Please configure these in your Streamlit app settings:")
-        st.error("1. Go to your Streamlit app settings")
-        st.error("2. Add a new section called [supabase]")
-        st.error("3. Add the following keys:")
-        st.error("   - url: Your Supabase project URL")
-        st.error("   - anon_key: Your Supabase anon key")
+        st.error("Supabase credentials not found in environment variables")
+        st.error("Please set these environment variables:")
+        st.error("1. SUPABASE_URL: Your Supabase project URL")
+        st.error("2. SUPABASE_KEY: Your Supabase anon key")
         st.error("""Example configuration:
-[supabase]
-url = "https://your-project.supabase.co"
-anon_key = "your-anon-key-here"
+export SUPABASE_URL="https://your-project.supabase.co"
+export SUPABASE_KEY="your-anon-key-here"
 """)
         raise ValueError("Supabase credentials not found")
     
