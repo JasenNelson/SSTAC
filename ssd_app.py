@@ -7,12 +7,37 @@ import supabase
 from st_supabase_connection import SupabaseConnection
 
 # Initialize Supabase connection with secrets
-supabase_conn = st.experimental_connection(
-    "supabase",
-    type=SupabaseConnection,
-    url=st.secrets.get("supabase_url"),
-    key=st.secrets.get("supabase_key")
-)
+try:
+    # The URL should be in the format: https://<project-ref>.supabase.co/rest/v1
+    supabase_url = st.secrets.get("supabase_url")
+    if not supabase_url.endswith('/rest/v1'):
+        supabase_url = f"{supabase_url}/rest/v1"
+    
+    supabase_conn = st.experimental_connection(
+        "supabase",
+        type=SupabaseConnection,
+        url=supabase_url,
+        key=st.secrets.get("supabase_key")
+    )
+    
+    # Test the connection
+    with st.spinner("Testing Supabase connection..."):
+        try:
+            # Try a simple query to test the connection
+            test_query = supabase_conn.table("toxicology_data").select("chemical_name").limit(1).execute()
+            if test_query.data:
+                st.success("Successfully connected to Supabase!")
+            else:
+                st.warning("Connected to Supabase, but no data found.")
+        except Exception as e:
+            st.error(f"Error testing Supabase connection: {str(e)}")
+            st.error("Please check your Supabase URL and key in the app settings.")
+            st.error("The URL should be in this format: https://<project-ref>.supabase.co/rest/v1")
+
+except Exception as e:
+    st.error(f"Error initializing Supabase connection: {str(e)}")
+    st.error("Please check your Supabase URL and key in the app settings.")
+    st.error("The URL should be in this format: https://<project-ref>.supabase.co/rest/v1")
 
 # --- Configuration --- (Keep this section as is)
 ECOTOX_EXPECTED_COLS = {
