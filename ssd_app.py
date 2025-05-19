@@ -648,7 +648,34 @@ def fetch_chemicals():
     with st.spinner("Fetching chemical list from Supabase..."):
         try:
             # Fetch chemicals from database
-            chemicals = supabase_conn.table("chemicals").select("name, cas_number").execute()
+            chemicals = supabase_conn.table("public.chemicals").select("name, cas_number").execute()
+            
+            # Check if we got any data
+            if not chemicals.data:
+                st.error("No chemicals found in the database")
+                return
+                
+            # Convert to DataFrame and add unique identifier
+            df = pd.DataFrame(chemicals.data)
+            df['id'] = df.index + 1
+            
+            # Add chemical group column
+            df['group'] = df['name'].apply(get_chemical_group)
+            
+            # Add CAS number column if not present
+            if 'cas_number' not in df.columns:
+                df['cas_number'] = ""
+            
+            # Add media classification based on units
+            df['media'] = df['cas_number'].apply(lambda x: get_media_from_unit(x) if x else 'Unknown')
+            
+            # Add occurrence count
+            df['occurrences'] = 1
+            
+            # Process chemicals
+            chem_data = []
+            seen_chemicals = set()
+            chemical_groups = {}
             
             # Convert to DataFrame and add unique identifier
             if chemicals:
@@ -665,7 +692,7 @@ def fetch_chemicals():
                 df['test_cas'] = ""
             
             # Add media classification based on units
-            df['media'] = df['conc1_unit'].apply(get_media_from_unit)
+            df['media'] = df['cas_number'].apply(lambda x: get_media_from_unit(x) if x else 'Unknown')
             
             # Add occurrence count
             df['count'] = df.groupby('chemical_name')['chemical_name'].transform('count')
