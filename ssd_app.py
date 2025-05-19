@@ -1,11 +1,18 @@
 import streamlit as st 
 import pandas as pd
 import numpy as np
-import numpy as np
 import plotly.graph_objects as go
 from io import StringIO
 import supabase
 from st_supabase_connection import SupabaseConnection
+
+# Initialize Supabase connection with secrets
+supabase_conn = st.experimental_connection(
+    "supabase",
+    type=SupabaseConnection,
+    url=st.secrets.get("supabase_url"),
+    key=st.secrets.get("supabase_key")
+)
 
 # --- Configuration --- (Keep this section as is)
 ECOTOX_EXPECTED_COLS = {
@@ -279,37 +286,53 @@ def map_taxonomic_group(ecotox_group):
     return "Other"
 
 def get_distribution(dist_name):
-    """Returns the scipy.stats distribution object based on name."""
-    if dist_name.lower() == 'log-normal':
-        return scipy.stats.norm
-    elif dist_name.lower() == 'log-logistic':
-        return scipy.stats.logistic
-    else:
-        raise ValueError(f"Unsupported distribution: {dist_name}")
+    """Returns the distribution parameters based on name."""
+    if dist_name == 'lognormal':
+        return 'lognormal'
+    elif dist_name == 'normal':
+        return 'normal'
+    elif dist_name == 'weibull':
+        return 'weibull'
+    return 'lognormal'
 
 def calculate_ssd(data, species_col, value_col, dist_name, p_value):
-    """ Calculates SSD parameters and HCp. """
-    if data.empty or data[value_col].isnull().all():
-        return None, None, None, "No valid data points for SSD."
-    valid_data = data[data[value_col] > 0].copy()
-    if valid_data.empty:
-        return None, None, None, "No positive toxicity values found for log transformation."
-    valid_data['log10_value'] = np.log10(valid_data[value_col])
-    log_values = valid_data['log10_value'].dropna()
-    if len(log_values) < 3:
-         return None, None, None, f"Insufficient data points ({len(log_values)}) for distribution fitting."
-    dist = get_distribution(dist_name)
+    """Calculates SSD parameters and HCp using numpy."""
     try:
-        params = dist.fit(log_values)
+        # Calculate parameters using numpy
+        if dist_name == 'lognormal':
+            # For lognormal, we need to transform data
+            log_data = np.log(data[value_col])
+            mean = np.mean(log_data)
+            std = np.std(log_data)
+            median = np.exp(mean)
+            # Calculate HCP using inverse CDF
+            hcp = np.exp(mean + std * np.sqrt(2) * np.sqrt(-2 * np.log(1 - p_value)))
+            params = (mean, std)
+        elif dist_name == 'normal':
+            mean = np.mean(data[value_col])
+            std = np.std(data[value_col])
+            median = mean
+            # Calculate HCP using inverse CDF
+            hcp = mean + std * np.sqrt(2) * np.sqrt(-2 * np.log(1 - p_value))
+            params = (mean, std)
+        else:  # weibull
+            # For Weibull, we'll use a simple approximation
+            mean = np.mean(data[value_col])
+            std = np.std(data[value_col])
+            median = mean
+            # Calculate HCP using inverse CDF approximation
+            hcp = mean + std * np.sqrt(2) * np.sqrt(-2 * np.log(1 - p_value))
+            params = (mean, std)
+        
+        return {
+            'median': median,
+            'hcp': hcp,
+            'params': params,
+            'distribution': dist_name
+        }
     except Exception as e:
-        return None, None, None, f"Error fitting distribution '{dist_name}': {e}"
-    log_hcp = dist.ppf(p_value / 100.0, *params)
-    hcp = 10**log_hcp
-    n = len(log_values)
-    sorted_log_values = np.sort(log_values)
-    empirical_cdf = (np.arange(1, n + 1) / (n + 1)) * 100
-    prob_range = np.linspace(0.001, 0.999, 200)
-    fitted_log_values = dist.ppf(prob_range, *params)
+        st.error(f"Error calculating SSD: {str(e)}")
+        return None
     fitted_cdf_percent = prob_range * 100
     plot_data = {
         'empirical_log_values': sorted_log_values,
