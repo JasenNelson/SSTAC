@@ -13,10 +13,14 @@ try:
     supabase_key = os.environ.get("SUPABASE_KEY")
     
     if not supabase_url or not supabase_key:
-        # If not in environment, try Streamlit secrets
-        supabase_url = st.secrets.get("SUPABASE_URL")
-        supabase_key = st.secrets.get("SUPABASE_KEY")
-        
+        # Try to get secrets from the [supabase] section in Streamlit secrets
+        try:
+            supabase_secrets = st.secrets.get("supabase", {})
+            supabase_url = supabase_secrets.get("url")
+            supabase_key = supabase_secrets.get("anon_key")
+        except Exception:
+            pass
+            
     if not supabase_url or not supabase_key:
         # If still not found, show error and provide instructions
         st.error("Supabase connection not configured. Please set these secrets:")
@@ -26,7 +30,7 @@ try:
         st.error("2. Or in your local .streamlit/secrets.toml:")
         st.error("   [supabase]")
         st.error("   url = \"https://wdvbesswsmrgjunpnxqu.supabase.co\"")
-        st.error("   key = \"your-anon-key-here\"")
+        st.error("   anon_key = \"your-anon-key-here\"")
         raise ValueError("Supabase secrets are not configured")
     
     # Ensure URL ends with /rest/v1
@@ -66,6 +70,19 @@ if supabase_conn is None:
     st.warning("Supabase connection failed. Some features may not be available.")
     # Prevent any code that uses the connection from running
     raise SystemExit("Supabase connection not available")
+
+# Move the rest of the configuration section back to its original position
+ECOTOX_EXPECTED_COLS = {
+    'cas': 'test_cas',            # CAS Registry Number
+    'chemical': 'chemical_name',  # Chemical Name
+    'species_sci': 'species_scientific_name', # Species Scientific Name
+    'species_common': 'species_common_name', # Species Common Name (Optional)
+    'group': 'species_group',     # Taxonomic Group
+    'endpoint': 'endpoint',       # Endpoint code
+    'effect': 'effect',           # Effect measured
+    'conc_mean': 'conc1_mean',    # Mean concentration value
+    'conc_unit': 'conc1_unit'     # Concentration unit
+}
 
 # --- Configuration --- (Keep this section as is)
 ECOTOX_EXPECTED_COLS = {
