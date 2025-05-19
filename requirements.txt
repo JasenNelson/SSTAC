@@ -1,0 +1,6 @@
+streamlit==1.33.0
+pandas==2.1.4
+plotly==5.18.0
+numpy==1.26.4
+st-supabase-connection==2.0.1
+scipy==1.11.4
