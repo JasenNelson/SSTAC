@@ -6,16 +6,27 @@ from io import StringIO
 import supabase
 from st_supabase_connection import SupabaseConnection
 
-# Initialize Supabase connection
+# Initialize Supabase connection with a fallback mechanism
 try:
-    # Get Supabase secrets
-    supabase_url = st.secrets.get("SUPABASE_URL")  # Note the capitalization
-    supabase_key = st.secrets.get("SUPABASE_KEY")  # Note the capitalization
+    # First try to get secrets from environment variables
+    supabase_url = os.environ.get("SUPABASE_URL")
+    supabase_key = os.environ.get("SUPABASE_KEY")
     
     if not supabase_url or not supabase_key:
+        # If not in environment, try Streamlit secrets
+        supabase_url = st.secrets.get("SUPABASE_URL")
+        supabase_key = st.secrets.get("SUPABASE_KEY")
+        
+    if not supabase_url or not supabase_key:
+        # If still not found, show error and provide instructions
         st.error("Supabase connection not configured. Please set these secrets:")
-        st.error("- SUPABASE_URL: Your Supabase project URL (e.g., https://wdvbesswsmrgjunpnxqu.supabase.co)")
-        st.error("- SUPABASE_KEY: Your Supabase anon key")
+        st.error("1. In Streamlit app settings:")
+        st.error("   - SUPABASE_URL: Your Supabase project URL (e.g., https://wdvbesswsmrgjunpnxqu.supabase.co)")
+        st.error("   - SUPABASE_KEY: Your Supabase anon key")
+        st.error("2. Or in your local .streamlit/secrets.toml:")
+        st.error("   [supabase]")
+        st.error("   url = \"https://wdvbesswsmrgjunpnxqu.supabase.co\"")
+        st.error("   key = \"your-anon-key-here\"")
         raise ValueError("Supabase secrets are not configured")
     
     # Ensure URL ends with /rest/v1
@@ -49,6 +60,12 @@ except Exception as e:
     st.error("Please check your Supabase URL and key in the app settings.")
     st.error("The URL should be in this format: https://<project-ref>.supabase.co/rest/v1")
     supabase_conn = None  # Set to None so we can check later if connection failed
+
+# Add a check to prevent using the connection if it failed
+if supabase_conn is None:
+    st.warning("Supabase connection failed. Some features may not be available.")
+    # Prevent any code that uses the connection from running
+    raise SystemExit("Supabase connection not available")
 
 # --- Configuration --- (Keep this section as is)
 ECOTOX_EXPECTED_COLS = {
