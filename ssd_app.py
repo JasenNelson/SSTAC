@@ -544,13 +544,18 @@ key = "your_supabase_key"
         help="Select media types to filter the chemicals based on their measurement units"
     )
 
-    # Add visualization of media distribution
-    with st.expander("Media Distribution", expanded=False):
-        media_counts = df['media'].value_counts()
-        fig = px.pie(values=media_counts.values, names=media_counts.index,
-                    title="Chemical Distribution by Media",
-                    color_discrete_sequence=px.colors.qualitative.Plotly)
-        st.plotly_chart(fig, use_container_width=True)
+    # Add visualization of media distribution after data is loaded
+    if st.session_state.chemicals_loaded and st.session_state.chemicals_data:
+        with st.expander("Media Distribution", expanded=False):
+            # Create DataFrame from chemicals_data
+            df = pd.DataFrame(st.session_state.chemicals_data)
+            # Get media from units
+            df['media'] = df['conc1_unit'].apply(get_media_from_unit)
+            media_counts = df['media'].value_counts()
+            fig = px.pie(values=media_counts.values, names=media_counts.index,
+                        title="Chemical Distribution by Media",
+                        color_discrete_sequence=px.colors.qualitative.Plotly)
+            st.plotly_chart(fig, use_container_width=True)
     
     # Add fetch chemicals button with loading state
     if st.button("Fetch Chemical List from Supabase"):
