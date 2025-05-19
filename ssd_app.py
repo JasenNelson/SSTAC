@@ -7,6 +7,29 @@ import supabase
 from st_supabase_connection import SupabaseConnection
 import plotly.express as px
 
+def show_media_distribution():
+    if st.session_state.chemicals_loaded and st.session_state.chemicals_data:
+        with st.expander("Media Distribution", expanded=False):
+            try:
+                # Create DataFrame from chemicals_data
+                df = pd.DataFrame(st.session_state.chemicals_data)
+                
+                # Ensure required columns exist
+                if 'media' not in df.columns:
+                    st.error("No media classification data available")
+                    st.warning("Please fetch chemical data first to generate the visualization.")
+                    return
+                
+                # Get media from units
+                media_counts = df['media'].value_counts()
+                fig = px.pie(values=media_counts.values, names=media_counts.index,
+                            title="Chemical Distribution by Media",
+                            color_discrete_sequence=px.colors.qualitative.Plotly)
+                st.plotly_chart(fig, use_container_width=True)
+            except Exception as e:
+                st.error(f"Error generating media distribution visualization: {str(e)}")
+                st.exception(e)
+
 # Set page configuration first
 st.set_page_config(layout="wide")
 
@@ -48,17 +71,16 @@ anon_key = "your-anon-key-here"
         st.error("URL must start with 'https://' and end with '.supabase.co'")
         raise ValueError("Invalid Supabase URL format")
     
-    # Create Supabase connection
+    # Create Supabase connection using Streamlit's connection system
+    supabase_conn = st.connection(
+        "supabase",
+        type=SupabaseConnection,
+        url=supabase_url,
+        key=supabase_key
+    )
+    
+    # Test the connection
     try:
-        # Create Supabase connection using Streamlit's connection system
-        supabase_conn = st.connection(
-            "supabase",
-            type=SupabaseConnection,
-            url=supabase_url,
-            key=supabase_key
-        )
-        
-        # Test the connection
         test_query = supabase_conn.table("toxicology_data").select("chemical_name").limit(1).execute()
         
         if test_query.data:
@@ -67,12 +89,16 @@ anon_key = "your-anon-key-here"
             st.warning("Connected to Supabase, but no data found.")
             
     except Exception as e:
-        st.error(f"Error creating Supabase connection: {str(e)}")
+        st.error(f"Error testing Supabase connection: {str(e)}")
         st.error("Please check:")
         st.error("1. Your Supabase URL and anon key are correct")
         st.error("2. The URL is accessible")
         st.error("3. The anon key has the correct permissions")
         raise e
+            
+except Exception as e:
+    st.error(f"Failed to initialize Supabase connection: {str(e)}")
+    raise e
 
 except Exception as e:
     st.error(f"Error initializing Supabase connection: {str(e)}")
@@ -595,12 +621,19 @@ key = "your_supabase_key"
                 st.error(f"Failed to fetch chemicals: {str(e)}")
                 st.exception(e)
 
-    # Add visualization of media distribution after data is loaded
+def show_media_distribution():
     if st.session_state.chemicals_loaded and st.session_state.chemicals_data:
         with st.expander("Media Distribution", expanded=False):
             try:
                 # Create DataFrame from chemicals_data
                 df = pd.DataFrame(st.session_state.chemicals_data)
+                
+                # Ensure required columns exist
+                if 'media' not in df.columns:
+                    st.error("No media classification data available")
+                    st.warning("Please fetch chemical data first to generate the visualization.")
+                    return
+                
                 # Get media from units
                 media_counts = df['media'].value_counts()
                 fig = px.pie(values=media_counts.values, names=media_counts.index,
@@ -610,6 +643,9 @@ key = "your_supabase_key"
             except Exception as e:
                 st.error(f"Error generating media distribution visualization: {str(e)}")
                 st.exception(e)
+
+# Show media distribution visualization
+show_media_distribution()
     if st.button("Fetch Chemical List from Supabase"):
         with st.spinner("Fetching chemical list from Supabase..."):
             try:
