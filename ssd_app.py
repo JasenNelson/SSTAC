@@ -6,6 +6,11 @@ from io import StringIO
 import supabase
 from st_supabase_connection import SupabaseConnection
 import plotly.express as px
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv()
 
 def show_media_distribution():
     if st.session_state.chemicals_loaded and st.session_state.chemicals_data:
