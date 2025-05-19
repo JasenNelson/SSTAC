@@ -6,19 +6,29 @@ from io import StringIO
 import supabase
 from st_supabase_connection import SupabaseConnection
 
-# Initialize Supabase connection with a fallback mechanism
+# Initialize Supabase connection with enhanced error handling
 try:
     # First try to get secrets from environment variables
+    st.info("Attempting to initialize Supabase connection...")
+    st.info("Checking for environment variables...")
+    
     supabase_url = os.environ.get("SUPABASE_URL")
     supabase_key = os.environ.get("SUPABASE_KEY")
     
     if not supabase_url or not supabase_key:
+        st.info("No environment variables found, checking Streamlit secrets...")
         # Try to get secrets from the [supabase] section in Streamlit secrets
         try:
             supabase_secrets = st.secrets.get("supabase", {})
             supabase_url = supabase_secrets.get("url")
             supabase_key = supabase_secrets.get("anon_key")
-        except Exception:
+            
+            if supabase_url and supabase_key:
+                st.info("Found secrets in Streamlit configuration")
+            else:
+                st.error("Secrets found but incomplete")
+        except Exception as e:
+            st.error(f"Error accessing secrets: {str(e)}")
             pass
             
     if not supabase_url or not supabase_key:
@@ -35,22 +45,33 @@ try:
     
     # Ensure URL ends with /rest/v1
     if not supabase_url.endswith('/rest/v1'):
+        st.info("Adding /rest/v1 to URL")
         supabase_url = f"{supabase_url}/rest/v1"
     
     # Initialize connection
-    supabase_conn = st.experimental_connection(
-        "supabase",
-        type=SupabaseConnection,
-        url=supabase_url,
-        key=supabase_key
-    )
+    try:
+        st.info("Creating Supabase connection...")
+        supabase_conn = st.experimental_connection(
+            "supabase",
+            type=SupabaseConnection,
+            url=supabase_url,
+            key=supabase_key
+        )
+        st.info("Supabase connection created successfully")
+    except Exception as e:
+        st.error(f"Error creating Supabase connection: {str(e)}")
+        st.error(f"URL used: {supabase_url}")
+        st.error(f"Key provided: {bool(supabase_key)}")
+        raise e
     
     # Test the connection
     try:
+        st.info("Testing connection with query...")
         # Try a simple query to test the connection
         test_query = supabase_conn.table("toxicology_data").select("chemical_name").limit(1).execute()
         if test_query.data:
             st.success("Successfully connected to Supabase!")
+            st.info(f"Test query returned data: {test_query.data}")
         else:
             st.warning("Connected to Supabase, but no data found.")
     except Exception as e:
@@ -63,7 +84,10 @@ except Exception as e:
     st.error(f"Error initializing Supabase connection: {str(e)}")
     st.error("Please check your Supabase URL and key in the app settings.")
     st.error("The URL should be in this format: https://<project-ref>.supabase.co/rest/v1")
-    supabase_conn = None  # Set to None so we can check later if connection failed
+    st.error("Full traceback:")
+    import traceback
+    st.error(traceback.format_exc())
+    supabase_conn = None
 
 # Add a check to prevent using the connection if it failed
 if supabase_conn is None:
