@@ -12,28 +12,6 @@ import os
 # Load environment variables from .env file
 load_dotenv()
 
-def show_media_distribution():
-    if st.session_state.chemicals_loaded and st.session_state.chemicals_data:
-        with st.expander("Media Distribution", expanded=False):
-            try:
-                # Create DataFrame from chemicals_data
-                df = pd.DataFrame(st.session_state.chemicals_data)
-                
-                # Ensure required columns exist
-                if 'media' not in df.columns:
-                    st.error("No media classification data available")
-                    st.warning("Please fetch chemical data first to generate the visualization.")
-                    return
-                
-                # Get media from units
-                media_counts = df['media'].value_counts()
-                fig = px.pie(values=media_counts.values, names=media_counts.index,
-                            title="Chemical Distribution by Media",
-                            color_discrete_sequence=px.colors.qualitative.Plotly)
-                st.plotly_chart(fig, use_container_width=True)
-            except Exception as e:
-                st.error(f"Error generating media distribution visualization: {str(e)}")
-                st.exception(e)
 
 # Set page configuration first
 st.set_page_config(layout="wide")
@@ -622,8 +600,6 @@ def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
     )
     return fig
 
-# --- Helper Function to Read File Header / Chemical Names ---
-@st.cache_data(show_spinner=False) # Cache results to avoid re-reading on every interaction
 def get_chemical_options(uploaded_file):
     """Reads the file to extract unique chemical names for the dropdown."""
     if uploaded_file is None:
@@ -664,9 +640,6 @@ def get_chemical_options(uploaded_file):
         st.error(f"Error reading file for chemical list: {e}")
         return ["-- Error Reading File --"]
 
-# Set page configuration first
-st.set_page_config(layout="wide")
-
 def initialize_supabase_connection():
     """Initialize and test Supabase connection with proper error handling.
     Returns:
@@ -682,7 +655,7 @@ def initialize_supabase_connection():
         
         # If not found in secrets, try environment variables (for local development)
         if not supabase_url or not supabase_key:
-            # Try to get from environment variables
+            # Try environment variables
             supabase_url = os.getenv("SUPABASE_URL")
             supabase_key = os.getenv("SUPABASE_KEY")
 
@@ -716,6 +689,14 @@ def initialize_supabase_connection():
         st.error(f"Failed to initialize Supabase connection: {str(e)}")
         raise e
 
+# Set page configuration first
+st.set_page_config(layout="wide")
+
+# Initialize session state
+if 'chemicals_loaded' not in st.session_state:
+    st.session_state.chemicals_loaded = False
+    st.session_state.chemicals_data = []
+
 # Initialize Supabase connection
 supabase_conn = initialize_supabase_connection()
 
@@ -723,10 +704,51 @@ supabase_conn = initialize_supabase_connection()
 if supabase_conn is None:
     st.stop()
 
-# Initialize session state
-if 'chemicals_loaded' not in st.session_state:
-    st.session_state.chemicals_loaded = False
-    st.session_state.chemicals_data = []
+def fetch_chemicals():
+    """Fetch chemicals from Supabase and process them.
+    
+    Returns:
+        bool: True if chemicals were fetched successfully, False otherwise
+    """
+    try:
+        # Fetch chemicals from database
+        chemicals = supabase_conn.table("chemicals").select("chemical_name, test_cas").execute()
+        
+        # Check if we got any data
+        if not chemicals.data:
+            st.error("No chemicals found in the database")
+            return False
+            
+        # Convert to DataFrame
+        df = pd.DataFrame(chemicals.data)
+        
+        # Add chemical group column
+        df['group'] = df['chemical_name'].apply(get_chemical_group)
+        
+        # Add media classification based on units (we'll add this column later when we have units)
+        df['media'] = 'Unknown'
+        
+        # Add occurrence count
+        df['occurrences'] = 1
+        
+        # Ensure test_cas is a string
+        df['test_cas'] = df['test_cas'].astype(str)
+        
+        # Clean up CAS numbers by removing any non-digit characters
+        df['test_cas'] = df['test_cas'].str.replace(r'[^\d-]', '', regex=True)
+        
+        # Handle empty or invalid CAS numbers
+        df['test_cas'] = df['test_cas'].apply(lambda x: x if x and len(x) > 0 else "")
+        
+        # Store in session state
+        st.session_state.chemicals_data = df.to_dict('records')
+        st.session_state.chemicals_loaded = True
+        
+        return True
+    except Exception as e:
+        st.error(f"Failed to fetch chemicals: {str(e)}")
+        st.exception(e)
+        return False
 
 # Using pre-initialized Supabase connection from initialization section
 if supabase_conn:
@@ -773,92 +795,24 @@ if supabase_conn:
         if st.button("Fetch Chemical List from Supabase", key="fetch_chemicals_btn"):
             try:
                 with st.spinner("Fetching chemical list from Supabase..."):
-                    fetch_chemicals()
-                    df['group'] = df['name'].apply(get_chemical_group)
-                    
-                    # Add CAS number column (if not present)
-                    if 'cas_number' not in df.columns:
-                        df['cas_number'] = ""
-                    
-                    # Add media classification based on units
-                    df['media'] = df['cas_number'].apply(lambda x: get_media_from_unit(x) if x else 'Unknown')
-                    
-                    # Add occurrence count
-                    df['occurrences'] = 1
-                    
-                    # Store in session state
-                    st.session_state.chemicals_data = df.to_dict('records')
-                    st.session_state.chemicals_loaded = True
-                    
-                    # Show success message
-                    st.success("Successfully fetched chemicals!")
+                    if fetch_chemicals():
+                        st.success("Successfully fetched chemicals!")
             except Exception as e:
                 st.error(f"Failed to fetch chemicals: {str(e)}")
                 st.exception(e)
 
-def show_media_distribution():
-    if st.session_state.chemicals_loaded and st.session_state.chemicals_data:
-        with st.expander("Media Distribution", expanded=False):
-            try:
-                # Create DataFrame from chemicals_data
-                df = pd.DataFrame(st.session_state.chemicals_data)
-                
-                # Ensure required columns exist
-                if 'media' not in df.columns:
-                    st.error("No media classification data available")
-                    st.warning("Please fetch chemical data first to generate the visualization.")
-                    return
-                
-                # Get media from units
-                media_counts = df['media'].value_counts()
-                fig = px.pie(values=media_counts.values, names=media_counts.index,
-                            title="Chemical Distribution by Media",
-                            color_discrete_sequence=px.colors.qualitative.Plotly)
-                st.plotly_chart(fig, use_container_width=True)
-            except Exception as e:
-                st.error(f"Error generating media distribution visualization: {str(e)}")
-                st.exception(e)
-
-def fetch_chemicals():
-    with st.spinner("Fetching chemical list from Supabase..."):
-        try:
-            # Fetch chemicals from database
-            chemicals = supabase_conn.table("chemicals").select("name, cas_number").execute()
-            
-            # Check if we got any data
-            if not chemicals.data:
-                st.error("No chemicals found in the database")
-                return
-                
-            # Convert to DataFrame and add unique identifier
-            df = pd.DataFrame(chemicals.data)
-            df['id'] = df.index + 1
-            
-            # Add chemical group column
-            df['group'] = df['name'].apply(get_chemical_group)
-            
-            # Add CAS number column if not present
-            if 'cas_number' not in df.columns:
-                df['cas_number'] = ""
-            
-            # Add media classification based on units
-            df['media'] = df['cas_number'].apply(lambda x: get_media_from_unit(x) if x else 'Unknown')
-            
-            # Process chemicals
-            chem_data = []
-            seen_chemicals = set()
-            chemical_groups = {}
-            
+{{ ... }}
             for chem in df.itertuples(index=False):
                 if chem.name and chem.name not in seen_chemicals:
                     # Determine chemical group based on species group
                     species_group = chem.group if chem.group else "Unknown"
                     chemical_group = get_chemical_group(species_group)
                     
+{{ ... }}
                     # Track chemical groups
-                    if chemical_group not in chemical_groups:
-                        chemical_groups[chemical_group] = 0
-                    chemical_groups[chemical_group] += 1
+                if chemical_group not in chemical_groups:
+                    chemical_groups[chemical_group] = 0
+                chemical_groups[chemical_group] += 1
                     
                     # Add chemical data
                     chem_data.append({
