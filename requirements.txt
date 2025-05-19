@@ -2,7 +2,7 @@ streamlit==1.33.0
 pandas==2.1.4
 plotly==5.18.0
 numpy==1.26.4
-scipy==1.11.4
+scipy>=1.11.4
 supabase==2.15.1
 python-dotenv==1.0.0
 pint==0.24.1
