@@ -484,7 +484,7 @@ def get_chemical_options(uploaded_file):
 st.title("🧪 Species Sensitivity Distribution (SSD) Generator")
 
 # Initialize Supabase connection
-supabase_conn = st.experimental_connection("supabase", type=SupabaseConnection)
+supabase_conn = st.connection("supabase", type=SupabaseConnection)
 
 # Create a container for Supabase controls
 supabase_container = st.container()
