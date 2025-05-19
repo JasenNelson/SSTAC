@@ -666,69 +666,53 @@ def get_chemical_options(uploaded_file):
 st.title("🧪 Species Sensitivity Distribution (SSD) Generator")
 
 # Using pre-initialized Supabase connection from initialization section
+if supabase_conn:
+    with st.expander("Chemical Management", expanded=False):
+        st.write("Manage your chemical database:")
+        
+        # Add fetch chemicals button with unique key
+        if st.button("Fetch Chemical List from Supabase", key="fetch_chemicals_btn"):
+            with st.spinner("Fetching chemical list from Supabase..."):
+                fetch_chemicals()
 
-# Create a container for Supabase controls
-supabase_container = st.container()
-with supabase_container:
-    st.subheader("Supabase Connection")
-    
-    # Initialize session state for chemical data
-    if 'chemicals_loaded' not in st.session_state:
-        st.session_state.chemicals_loaded = False
-    if 'chemicals_data' not in st.session_state:
-        st.session_state.chemicals_data = []
-    
-    # Add Supabase connection button with loading state
-    if st.button("Connect to Supabase", key="supabase_connect_btn"):
-        try:
-            st.success("Successfully connected to Supabase!")
-        except Exception as e:
-            st.error(f"Failed to connect to Supabase: {e}")
-            st.write("Please check your Supabase credentials in .streamlit/secrets.toml")
-            st.write("Expected format:")
-            st.code("""
-[connections.supabase]
-url = "your_supabase_url"
-key = "your_supabase_key"
-""")
-    
-    # Add search functionality
-    search_term = st.text_input("Search for chemicals:", "")
-    
-    # Add chemical group filter
-    group_options = st.multiselect(
-        "Filter by Chemical Group",
-        options=['All',
-                'Organic Compounds (Aliphatic)', 'Organic Compounds (Aromatic)',
-                'Inorganic Compounds (Acids)', 'Inorganic Compounds (Bases)', 'Inorganic Compounds (Salts)',
-                'Metals (Heavy Metals)', 'Metals (Transition Metals)', 'Metals (Alkali Metals)',
-                'Pesticides (Herbicides)', 'Pesticides (Insecticides)', 'Pesticides (Fungicides)',
-                'Pharmaceuticals (Antibiotics)', 'Pharmaceuticals (Antivirals)', 'Pharmaceuticals (Analgesics)',
-                'Plastics (Thermoplastics)', 'Plastics (Thermosets)', 'Plastics (Biodegradable)',
-                'Solvents (Polar)', 'Solvents (Non-polar)', 'Solvents (Aprotic)',
-                'Surfactants (Anionic)', 'Surfactants (Cationic)', 'Surfactants (Non-ionic)',
-                'Dyes (Acidic)', 'Dyes (Basic)', 'Dyes (Direct)',
-                'Industrial Chemicals (Corrosives)', 'Industrial Chemicals (Flammables)', 'Industrial Chemicals (Toxic)',
-                'Nanomaterials (Metallic)', 'Nanomaterials (Carbon-based)', 'Nanomaterials (Oxide)',
-                'Radioactive Substances (Alpha)', 'Radioactive Substances (Beta)', 'Radioactive Substances (Gamma)',
-                'Biocides (Disinfectants)', 'Biocides (Antimicrobials)', 'Biocides (Preservatives)',
-                'Food Additives (Preservatives)', 'Food Additives (Colorants)', 'Food Additives (Emulsifiers)',
-                'Cosmetics (Skin Care)', 'Cosmetics (Hair Care)', 'Cosmetics (Makeup)'],
-        default=['All'],
-        help="Select chemical groups to filter the search results"
-    )
+        # Add search box
+        search_term = st.text_input("Search Chemicals", key="chem_search")
+        
+        # Add group filter
+        group_options = st.multiselect(
+            "Filter by Group",
+            options=["All", 
+                    'Organic Compounds (Aliphatic)', 'Organic Compounds (Aromatic)',
+                    'Inorganic Compounds (Acids)', 'Inorganic Compounds (Bases)', 'Inorganic Compounds (Salts)',
+                    'Metals (Heavy Metals)', 'Metals (Transition Metals)', 'Metals (Alkali Metals)',
+                    'Pesticides (Herbicides)', 'Pesticides (Insecticides)', 'Pesticides (Fungicides)',
+                    'Pharmaceuticals (Antibiotics)', 'Pharmaceuticals (Antivirals)', 'Pharmaceuticals (Analgesics)',
+                    'Plastics (Thermoplastics)', 'Plastics (Thermosets)', 'Plastics (Biodegradable)',
+                    'Solvents (Polar)', 'Solvents (Non-polar)', 'Solvents (Aprotic)',
+                    'Surfactants (Anionic)', 'Surfactants (Cationic)', 'Surfactants (Non-ionic)',
+                    'Dyes (Acidic)', 'Dyes (Basic)', 'Dyes (Direct)',
+                    'Industrial Chemicals (Corrosives)', 'Industrial Chemicals (Flammables)', 'Industrial Chemicals (Toxic)',
+                    'Nanomaterials (Metallic)', 'Nanomaterials (Carbon-based)', 'Nanomaterials (Oxide)',
+                    'Radioactive Substances (Alpha)', 'Radioactive Substances (Beta)', 'Radioactive Substances (Gamma)',
+                    'Biocides (Disinfectants)', 'Biocides (Antimicrobials)', 'Biocides (Preservatives)',
+                    'Food Additives (Preservatives)', 'Food Additives (Colorants)', 'Food Additives (Emulsifiers)',
+                    'Cosmetics (Skin Care)', 'Cosmetics (Hair Care)', 'Cosmetics (Makeup)'],
+            default=["All"],
+            key="group_filter",
+            help="Select chemical groups to filter the search results"
+        )
 
-    # Add media filter
-    media_options = st.multiselect(
-        "Filter by Media",
-        options=['All', 'Water/Wastewater', 'Soil/Sediment', 'Air', 'Biota', 'Food'],
-        default=['All'],
-        help="Select media types to filter the chemicals based on their measurement units"
-    )
+        # Add media filter
+        media_options = st.multiselect(
+            "Filter by Media",
+            options=['All', 'Water/Wastewater', 'Soil/Sediment', 'Air', 'Biota', 'Food'],
+            default=['All'],
+            key="media_filter",
+            help="Select media types to filter the chemicals based on their measurement units"
+        )
 
-    # Add fetch chemicals button with loading state
-    if st.button("Fetch Chemical List from Supabase", key="fetch_chemicals_btn_1"):
-        with st.spinner("Fetching chemical list from Supabase..."):
+# Show search results
+if st.session_state.chemicals_loaded:
             try:
                 # Fetch chemicals from database
                 chemicals = supabase_conn.table("chemicals").select("name, cas_number").execute()
