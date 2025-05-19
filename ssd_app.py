@@ -42,35 +42,19 @@ st.set_page_config(layout="wide")
 try:
     # First try to get credentials from Streamlit secrets (for Streamlit Cloud)
     supabase_config = st.secrets.get("supabase", {})
+    
+    # Get URL and key from config
     supabase_url = supabase_config.get("url")
-    supabase_key = supabase_config.get("anon_key")  # Changed from 'key' to 'anon_key' to match your secrets
+    supabase_key = supabase_config.get("anon_key")
     
     # If not found in secrets, try environment variables (for local development)
     if not supabase_url or not supabase_key:
+        # Try environment variables
         supabase_url = os.getenv("SUPABASE_URL")
         supabase_key = os.getenv("SUPABASE_KEY")
-    
-    if not supabase_url or not supabase_key:
-        st.error("Supabase credentials not found")
-        st.error("Please configure these in either:")
-        st.error("1. Streamlit Cloud Secrets (recommended for deployment):")
-        st.error("   - Go to your Streamlit app settings")
-        st.error("   - Add a new section called [supabase]")
-        st.error("   - Add the following keys:")
-        st.error("     - url: Your Supabase project URL")
-        st.error("     - anon_key: Your Supabase anon key")
-        st.error("""Example configuration:
-[supabase]
-url = "https://your-project.supabase.co"
-anon_key = "your-anon-key-here"
-""")
-        st.error("OR")
-        st.error("2. Environment variables (for local development):")
-        st.error("   - Create a .env file in your project root")
-        st.error("   - Add the following variables:")
-        st.error("     - SUPABASE_URL=your-project-url")
-        st.error("     - SUPABASE_KEY=your-anon-key")
-        raise ValueError("Supabase credentials not found")
+        
+        if not supabase_url or not supabase_key:
+            raise ValueError("Supabase credentials not found")
     
     # Create Supabase connection
     supabase_conn = st.connection(
@@ -82,16 +66,133 @@ anon_key = "your-anon-key-here"
     
     # Test the connection
     try:
-        # First try a simple query to test basic connection
-        st.info("Testing connection...")
+        # Try a simple query to verify basic connection
+        # Use a query that doesn't require auth
+        test_query = supabase_conn.table("public.chemicals").select("id").limit(1).execute()
+        if test_query.data:
+            st.success("Successfully connected to Supabase!")
+            st.write("Supabase connection test succeeded.")
+        else:
+            st.warning("Connected to Supabase, but no chemicals found.")
+            st.warning("This is normal if you haven't added any chemicals yet.")
+            
+    except Exception as e:
+        st.error(f"Error testing Supabase connection: {str(e)}")
+        st.error("Please check:")
+        st.error("1. Your Supabase URL and anon key are correct")
+        st.error("2. The URL is accessible")
+        st.error("3. The anon key has the correct permissions")
+        st.error("4. The database table 'public.chemicals' exists")
+        st.error("5. RLS policies are configured correctly")
+        st.error("""To create the chemicals table, run this SQL:
+CREATE TABLE public.chemicals (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    cas_number VARCHAR(20),
+    group VARCHAR(100),
+    occurrences INTEGER DEFAULT 1
+);
+""")
+        st.error("After creating the table, you'll need to:")
+        st.error("1. Add RLS policies to allow read access")
+        st.error("2. Insert some initial data")
+        st.error("3. Make sure the anon key has proper permissions")
+        raise e
+            
+except ValueError as e:
+    # Handle credential not found error
+    st.error("Supabase credentials not found")
+    st.error("Please configure these in either:")
+    st.error("1. Streamlit Cloud Secrets (recommended for deployment):")
+    st.error("   - Go to your Streamlit app settings")
+    st.error("   - Add a new section called [supabase]")
+    st.error("   - Add the following keys:")
+    st.error("     - url: Your Supabase project URL")
+    st.error("     - anon_key: Your Supabase anon key")
+    st.error("""Example configuration:
+[supabase]
+url = "https://your-project.supabase.co"
+anon_key = "your-anon-key-here"
+""")
+    st.error("OR")
+    st.error("2. Environment variables (for local development):")
+    st.error("   - Create a .env file in your project root")
+    st.error("   - Add the following variables:")
+    st.error("     - SUPABASE_URL=your-project-url")
+    st.error("     - SUPABASE_KEY=your-anon-key")
+    st.error("Full traceback:")
+    import traceback
+    st.error(traceback.format_exc())
+    supabase_conn = None
+    
+except Exception as e:
+    # Handle other initialization errors
+    st.error(f"Failed to initialize Supabase connection: {str(e)}")
+    st.error("Full traceback:")
+    st.error(traceback.format_exc())
+    supabase_conn = None
+
+# Initialize session state
+if 'chemicals_loaded' not in st.session_state:
+    st.session_state.chemicals_loaded = False
+if 'chemicals_data' not in st.session_state:
+    st.session_state.chemicals_data = []
+
+# Test the connection
+try:
+    # First try a simple query to test basic connection
+    st.info("Testing connection...")
+    try:
+        # Try to fetch a list of tables to verify connection
+        tables_query = supabase_conn.rpc("get_tables").execute()
+        if tables_query.data:
+            st.success("Successfully connected to Supabase!")
+            st.write("Available tables:", tables_query.data)
+            
+            # Now check if chemicals table exists
+            try:
+                chemicals_query = supabase_conn.table("chemicals").select("name").limit(1).execute()
+                if chemicals_query.data:
+                    st.success("Chemicals table found and accessible!")
+                else:
+                    st.warning("Connected to Supabase, but no chemicals found.")
+            except Exception as e:
+                if isinstance(e, dict) and e.get('code') == '42P01':
+                    st.error("Database table 'chemicals' not found")
+                    st.error("Please create the chemicals table in your Supabase database with the following structure:")
+                    st.code("""
+CREATE TABLE public.chemicals (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    cas_number VARCHAR(20),
+    group VARCHAR(100),
+    occurrences INTEGER DEFAULT 1
+);
+""")
+                    st.error("After creating the table, you'll need to:")
+                    st.error("1. Add RLS policies to allow read access")
+                    st.error("2. Insert some initial data")
+                    st.error("3. Make sure the anon key has proper permissions")
+                else:
+                    raise e
+        else:
+            st.error("Unable to access any tables in the database")
+            st.error("Please check:")
+            st.error("1. The anon key has the correct permissions")
+            st.error("2. RLS policies are correctly configured")
+            raise Exception("No tables accessible with current credentials")
+            
+    except Exception as e:
+        # If the RPC call fails, try a simpler query
+        st.info("Testing connection with simpler query...")
         try:
-            # Try to fetch a list of tables to verify connection
-            tables_query = supabase_conn.rpc("get_tables").execute()
-            if tables_query.data:
+            # Try a simpler query to verify basic connection
+            test_query = supabase_conn.table("auth.users").select("id").limit(1).execute()
+            if test_query.data:
                 st.success("Successfully connected to Supabase!")
-                st.write("Available tables:", tables_query.data)
+                st.warning("Note: The 'auth.users' table exists, but we need the 'chemicals' table for this app.")
                 
-                # Now check if chemicals table exists
+                # Check chemicals table again
                 try:
                     chemicals_query = supabase_conn.table("chemicals").select("name").limit(1).execute()
                     if chemicals_query.data:
@@ -123,68 +224,21 @@ CREATE TABLE public.chemicals (
                 st.error("1. The anon key has the correct permissions")
                 st.error("2. RLS policies are correctly configured")
                 raise Exception("No tables accessible with current credentials")
-                
         except Exception as e:
-            # If the RPC call fails, try a simpler query
-            st.info("Testing connection with simpler query...")
-            try:
-                # Try a simpler query to verify basic connection
-                test_query = supabase_conn.table("auth.users").select("id").limit(1).execute()
-                if test_query.data:
-                    st.success("Successfully connected to Supabase!")
-                    st.warning("Note: The 'auth.users' table exists, but we need the 'chemicals' table for this app.")
-                    
-                    # Check chemicals table again
-                    try:
-                        chemicals_query = supabase_conn.table("chemicals").select("name").limit(1).execute()
-                        if chemicals_query.data:
-                            st.success("Chemicals table found and accessible!")
-                        else:
-                            st.warning("Connected to Supabase, but no chemicals found.")
-                    except Exception as e:
-                        if isinstance(e, dict) and e.get('code') == '42P01':
-                            st.error("Database table 'chemicals' not found")
-                            st.error("Please create the chemicals table in your Supabase database with the following structure:")
-                            st.code("""
-CREATE TABLE public.chemicals (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    cas_number VARCHAR(20),
-    group VARCHAR(100),
-    occurrences INTEGER DEFAULT 1
-);
-""")
-                            st.error("After creating the table, you'll need to:")
-                            st.error("1. Add RLS policies to allow read access")
-                            st.error("2. Insert some initial data")
-                            st.error("3. Make sure the anon key has proper permissions")
-                        else:
-                            raise e
-                else:
-                    st.error("Unable to access any tables in the database")
-                    st.error("Please check:")
-                    st.error("1. The anon key has the correct permissions")
-                    st.error("2. RLS policies are correctly configured")
-                    raise Exception("No tables accessible with current credentials")
-            except Exception as e:
-                st.error(f"Error testing Supabase connection: {str(e)}")
-                st.error("Please check:")
-                st.error("1. Your Supabase URL and anon key are correct")
-                st.error("2. The URL is accessible")
-                st.error("3. The anon key has the correct permissions")
-                st.error("4. The database table 'chemicals' exists")
-                raise e
-                
-    except Exception as e:
-        st.error(f"Failed to test Supabase connection: {str(e)}")
-        st.error("Full traceback:")
-        import traceback
-        st.error(traceback.format_exc())
-        raise e
-            
+            st.error(f"Error testing connection: {str(e)}")
+            raise e
 except Exception as e:
-    st.error(f"Failed to initialize Supabase connection: {str(e)}")
+    st.error(f"Connection test failed: {str(e)}")
+    st.error("Please check:")
+    st.error("1. Your Supabase URL and anon key are correct")
+    st.error("2. The URL is accessible")
+    st.error("3. The anon key has the correct permissions")
+    st.error("4. The database table 'chemicals' exists")
     st.error("Full traceback:")
+    import traceback
+    st.error(traceback.format_exc())
+    raise e
+                
     import traceback
     st.error(traceback.format_exc())
     supabase_conn = None
@@ -624,7 +678,7 @@ with supabase_container:
         st.session_state.chemicals_data = []
     
     # Add Supabase connection button with loading state
-    if st.button("Connect to Supabase"):
+    if st.button("Connect to Supabase", key="supabase_connect_btn"):
         try:
             st.success("Successfully connected to Supabase!")
         except Exception as e:
@@ -672,7 +726,7 @@ key = "your_supabase_key"
     )
 
     # Add fetch chemicals button with loading state
-    if st.button("Fetch Chemical List from Supabase", key="fetch_chemicals_btn"):
+    if st.button("Fetch Chemical List from Supabase", key="fetch_chemicals_btn_1"):
         with st.spinner("Fetching chemical list from Supabase..."):
             try:
                 # Fetch chemicals from database
