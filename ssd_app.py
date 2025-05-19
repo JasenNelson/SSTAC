@@ -1,7 +1,7 @@
 import streamlit as st 
 import pandas as pd
 import numpy as np
-import scipy.stats
+import numpy as np
 import plotly.graph_objects as go
 from io import StringIO
 import supabase
@@ -790,7 +790,7 @@ if generate_button and is_ready_to_generate: # Check readiness flag
             species_group_val = group[group_col].iloc[0] if group_col in group.columns else "Unknown"
             if data_handling == 'Use Geometric Mean':
                 positive_values = group[value_col][group[value_col] > 0]
-                agg_value = scipy.stats.gmean(positive_values) if not positive_values.empty else np.nan
+                agg_value = np.exp(np.log(positive_values).mean()) if not positive_values.empty else np.nan
             else: # Most Sensitive
                 agg_value = group[value_col].min()
             if pd.notna(agg_value):
