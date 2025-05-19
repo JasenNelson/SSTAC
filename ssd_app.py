@@ -31,23 +31,9 @@ try:
         st.error("   - anon_key: Your Supabase anon key")
         raise ValueError("Supabase URL or key not configured")
     
-    # Create Supabase client directly
+    # Create Supabase connection
     try:
-        # Create Supabase client with explicit parameters
-        client = supabase.Client(
-            supabase_url=supabase_url,
-            supabase_key=supabase_key
-        )
-        
-        # Test the connection
-        test_query = client.table("toxicology_data").select("chemical_name").limit(1).execute()
-        
-        if test_query.data:
-            st.success("Successfully connected to Supabase!")
-        else:
-            st.warning("Connected to Supabase, but no data found.")
-            
-        # If connection test succeeds, create Streamlit connection
+        # Create Supabase connection using Streamlit's connection system
         supabase_conn = st.connection(
             "supabase",
             type=SupabaseConnection,
@@ -55,8 +41,16 @@ try:
             key=supabase_key
         )
         
+        # Test the connection
+        test_query = supabase_conn.table("toxicology_data").select("chemical_name").limit(1).execute()
+        
+        if test_query.data:
+            st.success("Successfully connected to Supabase!")
+        else:
+            st.warning("Connected to Supabase, but no data found.")
+            
     except Exception as e:
-        st.error(f"Error creating Supabase client: {str(e)}")
+        st.error(f"Error creating Supabase connection: {str(e)}")
         st.error(f"URL used: {supabase_url}")
         st.error(f"Key provided: {bool(supabase_key)}")
         raise e
@@ -565,7 +559,10 @@ key = "your_supabase_key"
                 chemicals = supabase_conn.table("toxicology_data").select("chemical_name, test_cas, conc1_unit").execute()
                 
                 # Convert to DataFrame and add unique identifier
-                df = pd.DataFrame(chemicals.data) if chemicals.data else pd.DataFrame()
+                if chemicals:
+                    df = pd.DataFrame(chemicals)
+                else:
+                    df = pd.DataFrame()
                 df['id'] = df.index + 1
                 
                 # Add chemical group column
