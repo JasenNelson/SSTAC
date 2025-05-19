@@ -40,19 +40,36 @@ st.set_page_config(layout="wide")
 
 # Initialize Supabase connection
 try:
-    # Get Supabase credentials from environment variables
-    supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_KEY")
+    # First try to get credentials from Streamlit secrets (for Streamlit Cloud)
+    supabase_config = st.secrets.get("supabase", {})
+    supabase_url = supabase_config.get("url")
+    supabase_key = supabase_config.get("anon_key")  # Changed from 'key' to 'anon_key' to match your secrets
+    
+    # If not found in secrets, try environment variables (for local development)
+    if not supabase_url or not supabase_key:
+        supabase_url = os.getenv("SUPABASE_URL")
+        supabase_key = os.getenv("SUPABASE_KEY")
     
     if not supabase_url or not supabase_key:
-        st.error("Supabase credentials not found in environment variables")
-        st.error("Please set these environment variables:")
-        st.error("1. SUPABASE_URL: Your Supabase project URL")
-        st.error("2. SUPABASE_KEY: Your Supabase anon key")
+        st.error("Supabase credentials not found")
+        st.error("Please configure these in either:")
+        st.error("1. Streamlit Cloud Secrets (recommended for deployment):")
+        st.error("   - Go to your Streamlit app settings")
+        st.error("   - Add a new section called [supabase]")
+        st.error("   - Add the following keys:")
+        st.error("     - url: Your Supabase project URL")
+        st.error("     - anon_key: Your Supabase anon key")  # Changed from 'key' to 'anon_key'
         st.error("""Example configuration:
-export SUPABASE_URL="https://your-project.supabase.co"
-export SUPABASE_KEY="your-anon-key-here"
+[supabase]
+url = "https://your-project.supabase.co"
+anon_key = "your-anon-key-here"
 """)
+        st.error("OR")
+        st.error("2. Environment variables (for local development):")
+        st.error("   - Create a .env file in your project root")
+        st.error("   - Add the following variables:")
+        st.error("     - SUPABASE_URL=your-project-url")
+        st.error("     - SUPABASE_KEY=your-anon-key")
         raise ValueError("Supabase credentials not found")
     
     # Create Supabase connection
