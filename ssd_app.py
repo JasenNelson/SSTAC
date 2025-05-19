@@ -753,17 +753,17 @@ def fetch_chemicals():
                 # Add download option for selected chemicals
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button("Download Selected Chemicals", key="download_selected_btn"):
+                    if st.button("Download Selected Chemicals", key="download_selected_btn_1"):
                         csv = selected_df.to_csv(index=False)
                         st.download_button(
                             label="Download CSV",
                             data=csv,
                             file_name="selected_chemicals.csv",
                             mime="text/csv",
-                            key="download_selected_csv"
+                            key="download_selected_csv_1"
                         )
                 with col2:
-                    if st.button("Download Complete List", key="download_complete_btn"):
+                    if st.button("Download Complete List", key="download_complete_btn_1"):
                         chem_df = pd.DataFrame(st.session_state.chemicals_data)
                         csv = chem_df.to_csv(index=False)
                         st.download_button(
@@ -771,7 +771,7 @@ def fetch_chemicals():
                             data=csv,
                             file_name="complete_chemical_list.csv",
                             mime="text/csv",
-                            key="download_complete_csv"
+                            key="download_complete_csv_1"
                         )
         else:
             st.info("No chemicals found matching your filters.")
