@@ -35,11 +35,12 @@ st.set_page_config(layout="wide")
 
 # Initialize Supabase connection
 try:
-    # Get secrets from Streamlit configuration
-    supabase_config = st.secrets.get("supabase", {})
+    # Get Supabase credentials from Streamlit secrets
+    supabase_url = st.secrets.get("supabase", {}).get("url")
+    supabase_key = st.secrets.get("supabase", {}).get("anon_key")
     
-    if not supabase_config:
-        st.error("Supabase configuration not found in secrets")
+    if not supabase_url or not supabase_key:
+        st.error("Supabase credentials not found in secrets")
         st.error("Please configure these in your Streamlit app settings:")
         st.error("1. Go to your Streamlit app settings")
         st.error("2. Add a new section called [supabase]")
@@ -51,27 +52,9 @@ try:
 url = "https://your-project.supabase.co"
 anon_key = "your-anon-key-here"
 """)
-        raise ValueError("Supabase configuration not found")
+        raise ValueError("Supabase credentials not found")
     
-    # Get URL and key from config
-    supabase_url = supabase_config.get("url")
-    supabase_key = supabase_config.get("anon_key")
-    
-    if not supabase_url or not supabase_key:
-        st.error("Supabase URL or key not found in configuration")
-        st.error("Please check your Streamlit app settings and ensure:")
-        st.error("1. The [supabase] section exists")
-        st.error("2. Both 'url' and 'anon_key' are properly set")
-        st.error("3. No values are empty")
-        raise ValueError("Supabase URL or key not configured")
-    
-    # Validate URL format
-    if not supabase_url.startswith("https://"):
-        st.error("Invalid Supabase URL format")
-        st.error("URL must start with 'https://' and end with '.supabase.co'")
-        raise ValueError("Invalid Supabase URL format")
-    
-    # Create Supabase connection using Streamlit's connection system
+    # Create Supabase connection
     supabase_conn = st.connection(
         "supabase",
         type=SupabaseConnection,
@@ -81,7 +64,7 @@ anon_key = "your-anon-key-here"
     
     # Test the connection
     try:
-        test_query = supabase_conn.table("toxicology_data").select("chemical_name").limit(1).execute()
+        test_query = supabase_conn.table("chemicals").select("name").limit(1).execute()
         
         if test_query.data:
             st.success("Successfully connected to Supabase!")
@@ -94,18 +77,21 @@ anon_key = "your-anon-key-here"
         st.error("1. Your Supabase URL and anon key are correct")
         st.error("2. The URL is accessible")
         st.error("3. The anon key has the correct permissions")
+        st.error("4. The database table 'chemicals' exists")
         raise e
             
 except Exception as e:
     st.error(f"Failed to initialize Supabase connection: {str(e)}")
-    raise e
-
-except Exception as e:
-    st.error(f"Error initializing Supabase connection: {str(e)}")
     st.error("Full traceback:")
     import traceback
     st.error(traceback.format_exc())
     supabase_conn = None
+
+# Initialize session state
+if 'chemicals_loaded' not in st.session_state:
+    st.session_state.chemicals_loaded = False
+if 'chemicals_data' not in st.session_state:
+    st.session_state.chemicals_data = []
 
 # Prevent using the connection if it failed
 if supabase_conn is None:
@@ -584,7 +570,7 @@ key = "your_supabase_key"
     )
 
     # Add fetch chemicals button with loading state
-    if st.button("Fetch Chemical List from Supabase"):
+    if st.button("Fetch Chemical List from Supabase", key="fetch_chemicals_btn"):
         with st.spinner("Fetching chemical list from Supabase..."):
             try:
                 # Fetch chemicals from database
@@ -648,7 +634,7 @@ def fetch_chemicals():
     with st.spinner("Fetching chemical list from Supabase..."):
         try:
             # Fetch chemicals from database
-            chemicals = supabase_conn.table("public.chemicals").select("name, cas_number").execute()
+            chemicals = supabase_conn.table("chemicals").select("name, cas_number").execute()
             
             # Check if we got any data
             if not chemicals.data:
@@ -669,41 +655,13 @@ def fetch_chemicals():
             # Add media classification based on units
             df['media'] = df['cas_number'].apply(lambda x: get_media_from_unit(x) if x else 'Unknown')
             
-            # Add occurrence count
-            df['occurrences'] = 1
-            
-            # Process chemicals
-            chem_data = []
-            seen_chemicals = set()
-            chemical_groups = {}
-            
-            # Convert to DataFrame and add unique identifier
-            if chemicals:
-                df = pd.DataFrame(chemicals.data)
-            else:
-                df = pd.DataFrame()
-            df['id'] = df.index + 1
-            
-            # Add chemical group column
-            df['group'] = df['name'].apply(get_chemical_group)
-            
-            # Add CAS number column (if not present)
-            if 'test_cas' not in df.columns:
-                df['test_cas'] = ""
-            
-            # Add media classification based on units
-            df['media'] = df['cas_number'].apply(lambda x: get_media_from_unit(x) if x else 'Unknown')
-            
-            # Add occurrence count
-            df['count'] = df.groupby('chemical_name')['chemical_name'].transform('count')
-            
             # Process chemicals
             chem_data = []
             seen_chemicals = set()
             chemical_groups = {}
             
             for chem in df.itertuples(index=False):
-                if chem.chemical_name and chem.chemical_name not in seen_chemicals:
+                if chem.name and chem.name not in seen_chemicals:
                     # Determine chemical group based on species group
                     species_group = chem.group if chem.group else "Unknown"
                     chemical_group = get_chemical_group(species_group)
@@ -719,18 +677,15 @@ def fetch_chemicals():
                         'name': chem.name,
                         'cas_number': chem.cas_number,
                         'group': chemical_group,
-                        'occurrences': chem.count
+                        'occurrences': 1
                     })
-                    seen_chemicals.add(chem.chemical_name)
-                elif chem.chemical_name in seen_chemicals:
+                    seen_chemicals.add(chem.name)
+                elif chem.name in seen_chemicals:
                     # Update count for existing chemicals
                     for item in chem_data:
-                        if item['name'] == chem.chemical_name:
-                            item['count'] += 1
+                        if item['name'] == chem.name:
+                            item['occurrences'] += 1
                             break
-            
-            # Sort chemicals by name
-            chem_data.sort(key=lambda x: x['name'].lower())
             
             # Store in session state
             st.session_state.chemicals_data = chem_data
@@ -759,11 +714,9 @@ def fetch_chemicals():
             st.write("Error details:")
             st.write(f"Type: {type(e).__name__}")
             st.write(f"Message: {str(e)}")
-
-# Create a container for Supabase controls
-supabase_container = st.container()
-
-with supabase_container:
+            st.exception(e)  # Show full traceback
+            raise e  # Re-raise to terminate the app if needed
+    # Add fetch chemicals button with unique key
     if st.button("Fetch Chemical List from Supabase", key="fetch_chemicals_btn"):
         fetch_chemicals()
     
@@ -798,36 +751,40 @@ with supabase_container:
                 st.dataframe(selected_df, hide_index=True)
                 
                 # Add download option for selected chemicals
-                if st.button("Download Selected Chemicals"):
-                    csv = selected_df.to_csv(index=False)
-                    st.download_button(
-                        label="Download CSV",
-                        data=csv,
-                        file_name="selected_chemicals.csv",
-                        mime="text/csv"
-                    )
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Download Selected Chemicals", key="download_selected_btn"):
+                        csv = selected_df.to_csv(index=False)
+                        st.download_button(
+                            label="Download CSV",
+                            data=csv,
+                            file_name="selected_chemicals.csv",
+                            mime="text/csv",
+                            key="download_selected_csv"
+                        )
+                with col2:
+                    if st.button("Download Complete List", key="download_complete_btn"):
+                        chem_df = pd.DataFrame(st.session_state.chemicals_data)
+                        csv = chem_df.to_csv(index=False)
+                        st.download_button(
+                            label="Download CSV",
+                            data=csv,
+                            file_name="complete_chemical_list.csv",
+                            mime="text/csv",
+                            key="download_complete_csv"
+                        )
         else:
             st.info("No chemicals found matching your filters.")
     
-    # Add chemical count
+    # Add chemical count 
     if st.session_state.chemicals_loaded:
         chem_count = len(st.session_state.chemicals_data)
         st.write(f"Total unique chemicals in database: {chem_count}")
-        
-        # Add download option for all chemicals
-        if st.button("Download Complete List"):
-            chem_df = pd.DataFrame(st.session_state.chemicals_data)
-            csv = chem_df.to_csv(index=False)
-            st.download_button(
-                label="Download CSV",
-                data=csv,
-                file_name="complete_chemical_list.csv",
-                mime="text/csv"
-            )
 
 st.markdown("""
 Upload your **processed** ecotoxicity data file (e.g., a `.csv` containing the required columns:
 `test_cas`, `chemical_name`, `species_scientific_name`, `species_common_name`, `species_group`,
+{{ ... }}
 `endpoint`, `effect`, `conc1_mean`, `conc1_unit`). Select the chemical from the dropdown and
 configure parameters to generate the SSD.
 """)
