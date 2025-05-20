@@ -814,12 +814,6 @@ if supabase_conn:
     group_df = pd.DataFrame(list(st.session_state.chemical_groups.items()), columns=['Group', 'Count'])
     st.bar_chart(group_df.set_index('Group'))
 
-    # Show chemical details
-    if st.checkbox("Show chemical details", key="show_chem_details"):
-        st.write("Chemical Details:")
-        chem_df = pd.DataFrame(chem_data)
-        st.dataframe(chem_df, hide_index=True)
-
 # Display all chemicals fetched from Supabase
 if st.session_state.chemicals_loaded and st.session_state.chemicals_data:
     st.write("### Chemicals Fetched from Supabase")
