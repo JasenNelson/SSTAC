@@ -639,7 +639,7 @@ def fetch_chemicals(search_term=None):
         columns = "id, test_cas, chemical_name, species_scientific_name, species_common_name, species_group, endpoint, effect, conc1_mean, conc1_unit"
         query = supabase_conn.table("toxicology_data").select(columns)
         if search_term and search_term.strip():
-            query = query.ilike("chemical_name", f"%{search_term.strip()}%")
+            query = query.ilike("chemical_name", f"{search_term.strip()}%")
         query = query.limit(1000)
         chemicals = query.execute()
         
