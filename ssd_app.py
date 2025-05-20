@@ -622,11 +622,12 @@ if supabase_conn is None:
     st.stop()
 
 def fetch_chemicals(search_term=None):
-    if not search_term or not search_term.strip():
-        st.warning("Please enter a search term to fetch chemicals. Fetching all records is disabled to avoid timeouts.")
-        return False
     chemical_groups = {}
     chem_data = []
+    if not search_term or not search_term.strip():
+        st.warning("Please enter a search term to fetch chemicals. Fetching all records is disabled to avoid timeouts.")
+        st.session_state.chemical_groups = chemical_groups  # Always set in session state
+        return False
     """Fetch chemicals from Supabase and process them.
     
     Returns:
