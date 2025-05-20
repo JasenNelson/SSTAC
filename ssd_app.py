@@ -114,37 +114,41 @@ if 'chemicals_loaded' not in st.session_state:
 if 'chemicals_data' not in st.session_state:
     st.session_state.chemicals_data = []
 
-try:
-    # Try to fetch a row from the toxicology_data table to verify connection
-    test_query = supabase_conn.table("toxicology_data").select("id, chemical_name").limit(1).execute()
-    if test_query.data:
-        st.success("Successfully connected to Supabase!")
-        st.write("Sample data from 'toxicology_data':", test_query.data)
-    else:
-        st.error("Unable to access any data from the 'toxicology_data' table.")
-        st.error("Please check:")
-        st.error("1. The anon key has the correct permissions")
-        st.error("2. RLS policies are correctly configured")
-        st.error("3. The 'toxicology_data' table exists and is not empty.")
-        raise Exception("No data accessible with current credentials")
+# --- Supabase connection test temporarily disabled ---
+# try:
+#     # Try to fetch a row from the toxicology_data table to verify connection
+#     test_query = supabase_conn.table("toxicology_data").select("id, chemical_name").limit(1).execute()
+#     if test_query.data:
+#         st.success("Successfully connected to Supabase!")
+#         st.write("Sample data from 'toxicology_data':", test_query.data)
+#     else:
+#         st.error("Unable to access any data from the 'toxicology_data' table.")
+#         st.error("Please check:")
+#         st.error("1. The anon key has the correct permissions")
+#         st.error("2. RLS policies are correctly configured")
+#         st.error("3. The 'toxicology_data' table exists and is not empty.")
+#         raise Exception("No data accessible with current credentials")
+#
+# except Exception as e:
+#     st.error(f"Error testing connection to Supabase: {str(e)}")
+#     st.error("Please verify your Supabase credentials, permissions, and table existence.")
+#     import traceback
+#     st.error(traceback.format_exc())
 
-except Exception as e:
-    st.error(f"Error testing connection to Supabase: {str(e)}")
-    st.error("Please verify your Supabase credentials, permissions, and table existence.")
-    import traceback
-    st.error(traceback.format_exc())
 
-
-except Exception as e:
-    st.error(f"Connection test failed: {str(e)}")
-    st.error("Please check:")
-    st.error("1. Your Supabase URL and anon key are correct")
-    st.error("2. The URL is accessible")
-    st.error("3. The anon key has the correct permissions")
-    st.error("4. The database table TABLE_CHEMICALS exists")
-    st.error("Full traceback:")
-    import traceback
-    st.error(traceback.format_exc())
+# try:
+#     # Place your connection test code here
+#     pass  # Replace with actual code
+# except Exception as e:
+#     st.error(f"Connection test failed: {str(e)}")
+#     st.error("Please check:")
+#     st.error("1. Your Supabase URL and anon key are correct")
+#     st.error("2. The URL is accessible")
+#     st.error("3. The anon key has the correct permissions")
+#     st.error("4. The database table TABLE_CHEMICALS exists")
+#     st.error("Full traceback:")
+#     import traceback
+#     st.error(traceback.format_exc())
 
 # Move the rest of the configuration section back to its original position
 ECOTOX_EXPECTED_COLS = {
