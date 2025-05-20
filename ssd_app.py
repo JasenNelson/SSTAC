@@ -621,7 +621,7 @@ supabase_conn = initialize_supabase_connection()
 if supabase_conn is None:
     st.stop()
 
-def fetch_chemicals():
+def fetch_chemicals(search_term=None):
     chemical_groups = {}
     chem_data = []
     """Fetch chemicals from Supabase and process them.
@@ -630,8 +630,11 @@ def fetch_chemicals():
         bool: True if chemicals were fetched successfully, False otherwise
     """
     try:
-        # Fetch chemicals from the correct table and headings
-        chemicals = supabase_conn.table("toxicology_data").select("id, test_cas, chemical_name, species_scientific_name, species_common_name, species_group, endpoint, effect, conc1_mean, conc1_unit, created_at, updated_at, source_url, retrieval_date, validation_errors").execute()
+        # Use ilike for wildcard, case-insensitive search if search_term is provided
+        query = supabase_conn.table("toxicology_data").select("id, test_cas, chemical_name, species_scientific_name, species_common_name, species_group, endpoint, effect, conc1_mean, conc1_unit, created_at, updated_at, source_url, retrieval_date, validation_errors")
+        if search_term and search_term.strip():
+            query = query.ilike("chemical_name", f"%{search_term.strip()}%")
+        chemicals = query.execute()
         
         # Check if we got any data
         if not chemicals.data:
@@ -720,7 +723,7 @@ if supabase_conn:
         if st.button("Fetch Toxicology Data from Supabase", key="fetch_chemicals_btn"):
             try:
                 with st.spinner("Fetching chemical list from Supabase..."):
-                    if fetch_chemicals():
+                    if fetch_chemicals(search_term=search_term):
                         st.success("Successfully fetched chemicals!")
             except Exception as e:
                 st.error(f"Failed to fetch records from toxicology_data: {str(e)}")
@@ -801,9 +804,7 @@ if st.session_state.chemicals_loaded and st.session_state.chemicals_data:
 if st.session_state.chemicals_loaded:
     # Filter by search term
     filtered_chems = st.session_state.chemicals_data
-    if search_term:
-        filtered_chems = [chem for chem in filtered_chems 
-                        if chem['chemical_name'].strip().lower() == search_term.strip().lower()]
+
     
     # Filter by groups
     if 'All' not in group_options:
@@ -820,6 +821,8 @@ if st.session_state.chemicals_loaded:
             options=chem_df['chemical_name'].tolist(),
             help="Select multiple chemicals by holding Ctrl/Cmd"
         )
+    else:
+        st.info("No chemicals found matching your search.")
         
         if selected_chemicals:
             # Show selected chemicals
@@ -870,7 +873,7 @@ configure parameters to generate the SSD.
 if 'selected_chemical' not in st.session_state:
     st.session_state.selected_chemical = "-- Select Chemical --"
 if 'file_processed_chem_list' not in st.session_state:
-     st.session_state.file_processed_chem_list = None
+    st.session_state.file_processed_chem_list = None
 
 # --- Sidebar for Inputs ---
 with st.sidebar:
