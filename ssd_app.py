@@ -535,7 +535,7 @@ def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=empirical_x, y=plot_data['empirical_cdf_percent'], mode='markers', name='Species Data',
-        marker=dict(color='#1f2937', size=10, symbol='circle', opacity=1.0),
+        marker=dict(color='#2E4053', size=8, symbol='circle', opacity=0.8),
         hovertext=[f"Species: {sp}<br>Conc: {x:.2g} {unit}" for sp, x in zip(plot_data['species'], empirical_x)], hoverinfo='text'
     ))
     fig.add_trace(go.Scatter(
@@ -565,9 +565,12 @@ def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
         legend_title='Legend',
         legend_title_font_size=14,
         legend_font_size=12,
-        yaxis=dict(range=[0, 100], gridwidth=1, gridcolor='#E5E5EA'),
-        xaxis=dict(gridwidth=1, gridcolor='#E5E5EA'),
+        yaxis=dict(range=[0, 100], gridwidth=1, gridcolor='#E5E5EA', color='#222'),
+        xaxis=dict(gridwidth=1, gridcolor='#E5E5EA', color='#222'),
         hovermode='closest',
+        plot_bgcolor='#F7F7F7',
+        paper_bgcolor='#FFFFFF',
+        font=dict(color='#222'),
 
     )
     return fig
@@ -907,27 +910,46 @@ with st.sidebar:
                 st.session_state.file_processed_chem_list = get_chemical_options(uploaded_file)
         chemical_options = st.session_state.file_processed_chem_list or ["-- Error Reading File --"]
 
-    # Chemical search and filters (visible after file upload OR Supabase fetch)
-    # Only show one source of chemical options at a time to avoid duplicate widget keys
+    # Streamlined UI: show only relevant options depending on data source
     if uploaded_file is not None:
+        # --- FILE UPLOADED: Only show file-based workflow ---
+        st.markdown("### Chemical Selection (From Uploaded File)")
+        st.info("You have uploaded a file. The chemical selection and options below use only your uploaded data. To use the database, remove the file.")
         key_suffix = '_file'
         current_chemical_options = chemical_options
+        selected_chemicals = st.multiselect(
+            "Select Chemicals from File",
+            options=current_chemical_options,
+            key=f"selected_chemicals{key_suffix}",
+            help="Select multiple chemicals by holding Ctrl/Cmd"
+        )
+        valid_chem_names = [opt for opt in current_chemical_options if not opt.startswith('--') and opt.strip()]
+        if len(valid_chem_names) == 0:
+            st.warning("No valid chemical names found. Please check your file format.")
+        endpoint_type = st.radio(
+            "Endpoint Type", ('Acute (LC50, EC50)', 'Chronic (NOEC, LOEC, EC10)'), index=0,
+            help="Select the general type of endpoint to include."
+        )
+        min_species = st.number_input(
+            "Minimum Number of Species", min_value=3, value=5, step=1,
+            help="Minimum unique species required after filtering."
+        )
+        required_taxa_broad = st.multiselect(
+            "Required Taxonomic Groups", options=list(TAXONOMIC_MAPPING.keys()), default=list(TAXONOMIC_MAPPING.keys())[:3],
+            help="Select the broad taxonomic groups that *must* be represented."
+        )
+        data_handling = st.radio(
+            "Handle Multiple Values per Species", ('Use Geometric Mean', 'Use Most Sensitive (Minimum Value)'), index=0,
+            help="How to aggregate multiple data points for the same species."
+        )
     elif st.session_state.chemicals_loaded:
+        # --- NO FILE: Database workflow ---
+        st.markdown("### Chemical Search and Filters (From Database)")
+        st.info("No file uploaded. The options below let you search and filter chemicals from the central database.")
         key_suffix = '_supabase'
         current_chemical_options = [chem['chemical_name'] for chem in st.session_state.get('chemicals_data', [])] or ["-- No Chemicals Loaded --"]
-    else:
-        key_suffix = ''
-        current_chemical_options = ["-- Upload File First --"]
-
-    if uploaded_file is not None or st.session_state.chemicals_loaded:
-
-        st.markdown("### Chemical Search and Filters")
-        if uploaded_file is not None:
-            key_suffix = '_file'
-        else:
-            key_suffix = '_supabase'
         search_term = st.text_input(
-            "1. Search Toxicology Data",
+            "Search Toxicology Data",
             key=f"chem_search{key_suffix}",
             help="You can now search for any part of a chemical name (e.g., 'ace' will match 'Acetone'). Enter at least 3 characters."
         )
@@ -935,47 +957,46 @@ with st.sidebar:
             st.warning("Please enter at least 3 characters to search any part of the chemical name.")
             search_term = None
         group_options = st.multiselect(
-            "2. Filter by Group",
+            "Filter by Group",
             options=["All"] + sorted(set([chem.get('group', 'Unknown') for chem in st.session_state.get('chemicals_data', [])])),
             default=["All"],
             key=f"group_filter{key_suffix}",
             help="Select chemical groups to filter the search results"
         )
         media_options = st.multiselect(
-            "3. Filter by Media",
+            "Filter by Media",
             options=['All', 'Water/Wastewater', 'Soil/Sediment', 'Air', 'Biota', 'Food'],
             default=['All'],
             key=f"media_filter{key_suffix}",
             help="Select media types to filter the toxicology data based on their measurement units"
         )
         selected_chemicals = st.multiselect(
-            "4. Select Chemicals",
+            "Select Chemicals from Database",
             options=current_chemical_options,
             key=f"selected_chemicals{key_suffix}",
             help="Select multiple chemicals by holding Ctrl/Cmd"
         )
-        # Show a warning only if there are truly no valid chemical names
         valid_chem_names = [opt for opt in current_chemical_options if not opt.startswith('--') and opt.strip()]
-
         if len(valid_chem_names) == 0:
-            st.warning("No valid chemical names found. Please check your file format or Supabase data.")
-
+            st.warning("No valid chemical names found. Please check your database or search/filter settings.")
         endpoint_type = st.radio(
-            "3. Endpoint Type", ('Acute (LC50, EC50)', 'Chronic (NOEC, LOEC, EC10)'), index=0,
+            "Endpoint Type", ('Acute (LC50, EC50)', 'Chronic (NOEC, LOEC, EC10)'), index=0,
             help="Select the general type of endpoint to include."
         )
         min_species = st.number_input(
-            "4. Minimum Number of Species", min_value=3, value=5, step=1,
+            "Minimum Number of Species", min_value=3, value=5, step=1,
             help="Minimum unique species required after filtering."
         )
         required_taxa_broad = st.multiselect(
-            "5. Required Taxonomic Groups", options=list(TAXONOMIC_MAPPING.keys()), default=list(TAXONOMIC_MAPPING.keys())[:3],
+            "Required Taxonomic Groups", options=list(TAXONOMIC_MAPPING.keys()), default=list(TAXONOMIC_MAPPING.keys())[:3],
             help="Select the broad taxonomic groups that *must* be represented."
         )
         data_handling = st.radio(
-            "6. Handle Multiple Values per Species", ('Use Geometric Mean', 'Use Most Sensitive (Minimum Value)'), index=0,
+            "Handle Multiple Values per Species", ('Use Geometric Mean', 'Use Most Sensitive (Minimum Value)'), index=0,
             help="How to aggregate multiple data points for the same species."
         )
+    else:
+        st.info("Upload a file or fetch chemicals from the database to begin.")
         distribution_fit = st.selectbox(
             "7. Distribution for Fitting", ('Log-Normal', 'Log-Logistic'), index=0,
             help="Statistical distribution to fit to the log-transformed data."
