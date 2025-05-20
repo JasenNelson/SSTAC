@@ -1,7 +1,7 @@
 -- Create toxicology_data table
 CREATE TABLE IF NOT EXISTS toxicology_data (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    name TEXT NOT NULL,
+    chemical_name TEXT NOT NULL,
     cas_number TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
