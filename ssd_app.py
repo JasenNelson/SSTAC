@@ -523,37 +523,46 @@ def calculate_ssd(data, species_col, value_col, dist_name, p_value):
     return hcp, params, plot_data, None
 
 def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
-    """ Generates the SSD Plotly figure. """
+    """ Generates the SSD Plotly figure with x-axis in real concentration units (log scale). """
     if plot_data is None: return go.Figure()
+    import numpy as np
+    # Transform log10 values back to real concentrations for plotting
+    empirical_x = 10 ** np.array(plot_data['empirical_log_values'])
+    fitted_x = 10 ** np.array(plot_data['fitted_log_values'])
+    hcp_x = 10 ** plot_data['log_hcp'] if plot_data['log_hcp'] is not None and not np.isnan(plot_data['log_hcp']) else None
+
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-        x=plot_data['empirical_log_values'], y=plot_data['empirical_cdf_percent'], mode='markers', name='Species Data',
+        x=empirical_x, y=plot_data['empirical_cdf_percent'], mode='markers', name='Species Data',
         marker=dict(color='blue', size=8),
-        hovertext=[f"Species: {sp}<br>Log10 Conc: {log_val:.2f}" for sp, log_val in zip(plot_data['species'], plot_data['empirical_log_values'])], hoverinfo='text'
+        hovertext=[f"Species: {sp}<br>Conc: {x:.2g} {unit}" for sp, x in zip(plot_data['species'], empirical_x)], hoverinfo='text'
     ))
     fig.add_trace(go.Scatter(
-        x=plot_data['fitted_log_values'], y=plot_data['fitted_cdf_percent'], mode='lines', name=f'Fitted {dist_name} CDF', line=dict(color='red', dash='dash')
+        x=fitted_x, y=plot_data['fitted_cdf_percent'], mode='lines', name=f'Fitted {dist_name} CDF', line=dict(color='red', dash='dash')
     ))
-    # Draw vertical line for HCp
-    fig.add_vline(x=plot_data['log_hcp'], line=dict(color='grey', dash='dot'), name=f'HC{p_value}')
-    # Mark the HCp point
-    fig.add_trace(go.Scatter(x=[plot_data['log_hcp']], y=[p_value*100], mode='markers', marker=dict(color='red', size=10, symbol='x'), name=f'HC{p_value}'))
-    # Ensure x-axis includes all data and HCp marker
-    import numpy as np
-    all_x = np.concatenate([
-        np.array(plot_data['empirical_log_values']),
-        np.array(plot_data['fitted_log_values']),
-        np.array([plot_data['log_hcp']])
-    ])
-    xmin = np.nanmin(all_x)
-    xmax = np.nanmax(all_x)
-    xmargin = 0.1 * (xmax - xmin) if xmax > xmin else 1
-    fig.update_xaxes(range=[xmin - xmargin, xmax + xmargin])
+    # Mark the HCp point if valid
+    if hcp_x is not None and hcp_x > 0:
+        fig.add_trace(go.Scatter(x=[hcp_x], y=[p_value*100], mode='markers', marker=dict(color='red', size=10, symbol='x'), name=f'HC{p_value}'))
+    # Compute axis range to include all points and HCp
+    all_x = np.concatenate([empirical_x, fitted_x, [hcp_x] if hcp_x is not None and hcp_x > 0 else []])
+    all_x = all_x[all_x > 0]  # Remove non-positive values for log scale
+    if len(all_x) > 0:
+        xmin = np.nanmin(all_x)
+        xmax = np.nanmax(all_x)
+        xmargin = (np.log10(xmax) - np.log10(xmin)) * 0.1 if xmax > xmin else 1
+        fig.update_xaxes(type="log", range=[np.log10(xmin) - xmargin, np.log10(xmax) + xmargin])
+    else:
+        fig.update_xaxes(type="log")
     fig.update_layout(
-        title='Species Sensitivity Distribution (SSD)', xaxis_title=f'Concentration (Log10 {unit})', yaxis_title='Percent of Species Affected (%)',
-        legend_title='Legend', xaxis=dict(tickformat=".2f"), yaxis=dict(range=[0, 100]), hovermode='closest'
+        title='Species Sensitivity Distribution (SSD)',
+        xaxis_title=f'Concentration ({unit})',
+        yaxis_title='Percent of Species Affected (%)',
+        legend_title='Legend',
+        yaxis=dict(range=[0, 100]),
+        hovermode='closest'
     )
     return fig
+
 
 def get_chemical_options(uploaded_file):
     """Reads the file to extract unique chemical names for the dropdown."""
