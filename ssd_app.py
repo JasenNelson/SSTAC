@@ -711,8 +711,8 @@ def fetch_chemicals():
         bool: True if chemicals were fetched successfully, False otherwise
     """
     try:
-        # Fetch chemicals from database
-        chemicals = supabase_conn.table("chemicals").select("chemical_name, test_cas").execute()
+        # Fetch chemicals from the correct table and headings
+        chemicals = supabase_conn.table("toxicology_data").select("id, test_cas, chemical_name, species_scientific_name, species_common_name, species_group, endpoint, effect, concl_measured, concl_unit, created_at, updated_at, source_url, retrieval_date, validation_errors").execute()
         
         # Check if we got any data
         if not chemicals.data:
@@ -721,24 +721,30 @@ def fetch_chemicals():
             
         # Convert to DataFrame
         df = pd.DataFrame(chemicals.data)
+        st.write('Fetched columns:', df.columns.tolist())  # Show columns for verification
         
         # Add chemical group column
-        df['group'] = df['chemical_name'].apply(get_chemical_group)
+        if 'chemical_name' in df.columns:
+            df['group'] = df['chemical_name'].apply(get_chemical_group)
+        else:
+            df['group'] = 'Unknown'
         
-        # Add media classification based on units (we'll add this column later when we have units)
-        df['media'] = 'Unknown'
+        # Add media classification based on units (if concl_unit exists)
+        if 'concl_unit' in df.columns:
+            df['media'] = df['concl_unit'].apply(get_media_from_unit)
+        else:
+            df['media'] = 'Unknown'
         
         # Add occurrence count
         df['occurrences'] = 1
         
         # Ensure test_cas is a string
-        df['test_cas'] = df['test_cas'].astype(str)
-        
-        # Clean up CAS numbers by removing any non-digit characters
-        df['test_cas'] = df['test_cas'].str.replace(r'[^\d-]', '', regex=True)
-        
-        # Handle empty or invalid CAS numbers
-        df['test_cas'] = df['test_cas'].apply(lambda x: x if x and len(x) > 0 else "")
+        if 'test_cas' in df.columns:
+            df['test_cas'] = df['test_cas'].astype(str)
+            # Clean up CAS numbers by removing any non-digit characters
+            df['test_cas'] = df['test_cas'].str.replace(r'[^\d-]', '', regex=True)
+            # Handle empty or invalid CAS numbers
+            df['test_cas'] = df['test_cas'].apply(lambda x: x if x and len(x) > 0 else "")
         
         # Store in session state
         st.session_state.chemicals_data = df.to_dict('records')
