@@ -809,10 +809,6 @@ if supabase_conn:
 
     st.success(f"Successfully fetched {len(chem_data)} unique chemicals from Supabase!")
 
-    # Show chemical group distribution
-    st.write("Chemical Group Distribution:")
-    group_df = pd.DataFrame(list(st.session_state.chemical_groups.items()), columns=['Group', 'Count'])
-    st.bar_chart(group_df.set_index('Group'))
 
 # Display all chemicals fetched from Supabase
 if st.session_state.chemicals_loaded and st.session_state.chemicals_data:
