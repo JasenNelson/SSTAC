@@ -558,9 +558,6 @@ def initialize_supabase_connection():
         st.error(f"Failed to initialize Supabase connection: {str(e)}")
         raise e
 
-# Set page configuration first
-st.set_page_config(layout="wide")
-
 # Initialize session state
 if 'chemicals_loaded' not in st.session_state:
     st.session_state.chemicals_loaded = False
