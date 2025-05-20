@@ -1035,7 +1035,7 @@ if generate_button and is_ready_to_generate: # Check readiness flag
         # --- 1. Initial Filtering (Chemical & Endpoint Type) ---
         # *** MODIFIED: Filter by EXACT chemical name from dropdown ***
         name_col = ECOTOX_EXPECTED_COLS['chemical']
-        st.write(f"1. Filtering for Chemical: '{selected_chemical}'")
+        st.write(f"1. Filtering for Chemicals: {', '.join(selected_chemicals)}")
         # Ensure column is string type and strip whitespace just in case
         df[name_col] = df[name_col].astype(str).str.strip()
         # Filter for selected chemicals (list)
