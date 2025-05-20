@@ -137,8 +137,13 @@ if 'chemicals_data' not in st.session_state:
 
 
 # try:
-#     # Place your connection test code here
-#     pass  # Replace with actual code
+#     # Try to fetch a row from the toxicology_data table to verify connection (using valid columns)
+#     test_row = supabase_conn.table(TABLE_CHEMICALS).select("id, chemical_name").limit(1).execute()
+#     if not test_row.data:
+#         st.error("No data found in toxicology_data table.")
+#         raise Exception("No data accessible with current credentials")
+#     else:
+#         st.success("Supabase connection and table access verified.")
 # except Exception as e:
 #     st.error(f"Connection test failed: {str(e)}")
 #     st.error("Please check:")
