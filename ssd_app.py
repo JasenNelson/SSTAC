@@ -728,7 +728,7 @@ if supabase_conn:
                     # Add chemical data
                     chem_data.append({
                         'id': chem.id,
-                        'name': chem.name,
+                        'chemical_name': chem.chemical_name,
                         'cas_number': chem.cas_number,
                         'group': chemical_group,
                         'occurrences': 1
@@ -737,7 +737,7 @@ if supabase_conn:
                 elif chem.name in seen_chemicals:
                     # Update count for existing chemicals
                     for item in chem_data:
-                        if item['name'] == chem.name:
+                        if item['chemical_name'] == chem.chemical_name:
                             item['occurrences'] += 1
                             break
             
@@ -748,7 +748,7 @@ if supabase_conn:
             # Update chemical options
             if 'file_processed_chem_list' not in st.session_state:
                 st.session_state.file_processed_chem_list = []
-            st.session_state.file_processed_chem_list = [chem['name'] for chem in chem_data]
+            st.session_state.file_processed_chem_list = [chem['chemical_name'] for chem in chem_data]
             
             st.success(f"Successfully fetched {len(chem_data)} unique chemicals from Supabase!")
             
@@ -782,7 +782,7 @@ if st.session_state.chemicals_loaded:
     filtered_chems = st.session_state.chemicals_data
     if search_term:
         filtered_chems = [chem for chem in filtered_chems 
-                        if search_term.lower() in chem['name'].lower()]
+                        if search_term.lower() in chem['chemical_name'].lower()]
     
     # Filter by groups
     if 'All' not in group_options:
@@ -796,13 +796,13 @@ if st.session_state.chemicals_loaded:
         # Add multi-select for chemicals
         selected_chemicals = st.multiselect(
             "Select Chemicals",
-            options=chem_df['name'].tolist(),
+            options=chem_df['chemical_name'].tolist(),
             help="Select multiple chemicals by holding Ctrl/Cmd"
         )
         
         if selected_chemicals:
             # Show selected chemicals
-            selected_df = chem_df[chem_df['name'].isin(selected_chemicals)]
+            selected_df = chem_df[chem_df['chemical_name'].isin(selected_chemicals)]
             st.write("Selected Chemicals:")
             st.dataframe(selected_df, hide_index=True)
             
