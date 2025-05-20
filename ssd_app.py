@@ -1150,7 +1150,7 @@ if generate_button and is_ready_to_generate: # Check readiness flag
         ssd_dist = dist_map.get(distribution_fit, "lognormal")
         hcp_value, fit_params, plot_data_dict, error_msg = calculate_ssd(
             data=species_df, species_col=species_col, value_col='aggregated_value',
-            dist_name=ssd_dist, p_value=hcp_percentile
+            dist_name=ssd_dist, p_value=hcp_percentile / 100
         )
         if error_msg: st.error(f"❌ Error during SSD calculation: {error_msg}"); st.stop()
         st.success("   ✓ SSD calculation successful.")
