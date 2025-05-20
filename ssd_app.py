@@ -72,10 +72,7 @@ if 'chemicals_loaded' not in st.session_state:
 if 'chemicals_data' not in st.session_state:
     st.session_state.chemicals_data = []
 
-# Test the connection
 try:
-    # First try a simple query to test basic connection
-    st.info("Testing connection...")
     try:
         # Try to fetch a list of tables to verify connection
         tables_query = supabase_conn.rpc("get_tables").execute()
@@ -161,6 +158,7 @@ CREATE TABLE public.chemicals (
         except Exception as e:
             st.error(f"Error testing connection: {str(e)}")
             raise e
+
 except Exception as e:
     st.error(f"Connection test failed: {str(e)}")
     st.error("Please check:")
@@ -171,10 +169,6 @@ except Exception as e:
     st.error("Full traceback:")
     import traceback
     st.error(traceback.format_exc())
-    raise e
-                
-    import traceback
-    st.error(traceback.format_exc())
 
 # Initialize Supabase connection
 supabase_conn = initialize_supabase_connection()
@@ -182,11 +176,70 @@ if supabase_conn is None:
     st.error("Supabase connection could not be established. Please check your credentials and setup.")
     st.stop()
 
-# Initialize session state
-if 'chemicals_loaded' not in st.session_state:
-    st.session_state.chemicals_loaded = False
-if 'chemicals_data' not in st.session_state:
-    st.session_state.chemicals_data = []
+try:
+    # Try to fetch a list of tables to verify connection
+    tables_query = supabase_conn.rpc("get_tables").execute()
+    if tables_query.data:
+        st.success("Successfully connected to Supabase!")
+        st.write("Available tables:", tables_query.data)
+        # Now check if chemicals table exists
+        try:
+            chemicals_query = supabase_conn.table("chemicals").select("name").limit(1).execute()
+            if chemicals_query.data:
+                st.success("Chemicals table found and accessible!")
+            else:
+                st.warning("Connected to Supabase, but no chemicals found.")
+        except Exception as e:
+            if isinstance(e, dict) and e.get('code') == '42P01':
+                st.error("Database table 'chemicals' not found")
+                st.error("Please create the chemicals table in your Supabase database with the following structure:")
+                st.code("""
+CREATE TABLE public.chemicals (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    cas_number VARCHAR(20),
+    group VARCHAR(100),
+    occurrences INTEGER DEFAULT 1
+);
+""")
+                st.error("After creating the table, you'll need to:")
+                st.error("1. Add RLS policies to allow read access")
+                st.error("2. Insert some initial data")
+                st.error("3. Make sure the anon key has proper permissions")
+            else:
+                raise e
+    else:
+        st.error("Unable to access any tables in the database")
+        st.error("Please check:")
+        st.error("1. The anon key has the correct permissions")
+        st.error("2. RLS policies are correctly configured")
+        raise Exception("No tables accessible with current credentials")
+
+except Exception as e:
+    # If the RPC call fails, try a simpler query
+    st.info("Testing connection with simpler query...")
+    try:
+        test_query = supabase_conn.table("auth.users").select("id").limit(1).execute()
+        if test_query.data:
+            st.success("Successfully connected to Supabase!")
+            st.warning("Note: The 'auth.users' table exists, but the 'chemicals' table may not. Please check your schema.")
+        else:
+            st.error("Could not access any user data. Check your Supabase permissions and schema.")
+    except Exception as e:
+        st.error(f"Error testing connection: {str(e)}")
+        raise e
+
+
+except Exception as e:
+    st.error(f"Connection test failed: {str(e)}")
+    st.error("Please check:")
+    st.error("1. Your Supabase URL and anon key are correct")
+    st.error("2. The URL is accessible")
+    st.error("3. The anon key has the correct permissions")
+    st.error("4. The database table 'chemicals' exists")
+    st.error("Full traceback:")
+    import traceback
+    st.error(traceback.format_exc())
 
 # Move the rest of the configuration section back to its original position
 ECOTOX_EXPECTED_COLS = {
