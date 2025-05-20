@@ -894,20 +894,46 @@ if 'file_processed_chem_list' not in st.session_state:
 # --- Sidebar for Inputs ---
 with st.sidebar:
     st.header("⚙️ Settings")
-
-    # Store uploaded file info in session state to manage dropdown refresh
-    uploaded_file = st.file_uploader("1. Upload Processed Data File", type=['csv', 'txt']) # Prioritize CSV
-
+    # File upload
+    uploaded_file = st.file_uploader("1. Upload Processed Data File", type=['csv', 'txt'])
     chemical_options = ["-- Upload File First --"]
     if uploaded_file is not None:
-         # Check if file has changed or if list hasn't been generated yet
-         if uploaded_file != st.session_state.get('last_uploaded_file', None) or st.session_state.file_processed_chem_list is None:
-              st.session_state.last_uploaded_file = uploaded_file
-              with st.spinner("Reading chemical list..."):
-                     st.session_state.file_processed_chem_list = get_chemical_options(uploaded_file)
-         chemical_options = st.session_state.file_processed_chem_list or ["-- Error Reading File --"]
+        if uploaded_file != st.session_state.get('last_uploaded_file', None) or st.session_state.file_processed_chem_list is None:
+            st.session_state.last_uploaded_file = uploaded_file
+            with st.spinner("Reading chemical list..."):
+                st.session_state.file_processed_chem_list = get_chemical_options(uploaded_file)
+        chemical_options = st.session_state.file_processed_chem_list or ["-- Error Reading File --"]
 
-    # Always show SSD parameter controls after file upload
+    # Chemical search (always visible after file upload)
+    if uploaded_file is not None:
+        search_term = st.text_input(
+            "Search Toxicology Data",
+            key="chem_search",
+            help="You can now search for any part of a chemical name (e.g., 'ace' will match 'Acetone'). Enter at least 3 characters."
+        )
+        if search_term and len(search_term.strip()) < 3:
+            st.warning("Please enter at least 3 characters to search any part of the chemical name.")
+            search_term = None
+        group_options = st.multiselect(
+            "Filter by Group",
+            options=["All"] + sorted(set([chem.get('group', 'Unknown') for chem in st.session_state.chemicals_data])) if st.session_state.chemicals_data else ["All"],
+            default=["All"],
+            key="group_filter",
+            help="Select chemical groups to filter the search results"
+        )
+        media_options = st.multiselect(
+            "Filter by Media",
+            options=['All', 'Water/Wastewater', 'Soil/Sediment', 'Air', 'Biota', 'Food'],
+            default=['All'],
+            key="media_filter",
+            help="Select media types to filter the toxicology data based on their measurement units"
+        )
+        selected_chemicals = st.multiselect(
+            "Select Chemicals",
+            options=[chem['chemical_name'] for chem in st.session_state.chemicals_data] if st.session_state.chemicals_data else [],
+            help="Select multiple chemicals by holding Ctrl/Cmd"
+        )
+
     if uploaded_file is not None:
         selected_chemicals = st.multiselect(
             "2. Select Chemical Name(s)",
