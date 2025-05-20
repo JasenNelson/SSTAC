@@ -477,10 +477,27 @@ def calculate_ssd(data, species_col, value_col, dist_name, p_value):
             hcp = mean + std * np.sqrt(2) * np.sqrt(-2 * np.log(1 - p_value))
             params = (mean, std)
         
-        # Compose plot_data (minimal for now, can be expanded)
+        # Compose plot_data for SSD plotting
+        # Empirical CDF
+        log_values = np.log(data[value_col]) if dist_name == 'lognormal' else data[value_col]
+        sorted_log_values = np.sort(log_values)
+        empirical_cdf = np.arange(1, len(sorted_log_values) + 1) / (len(sorted_log_values) + 1)
+        # Fitted CDF
+        prob_range = np.linspace(0.001, 0.999, 100)
+        if dist_name == 'lognormal':
+            fitted_log_values = np.exp(mean + std * np.sqrt(2) * np.sqrt(-2 * np.log(1 - prob_range)))
+        else:
+            fitted_log_values = mean + std * np.sqrt(2) * np.sqrt(-2 * np.log(1 - prob_range))
+        fitted_cdf_percent = prob_range * 100
+        log_hcp = np.log(hcp) if hcp > 0 else float('nan')
         plot_data = {
-            'median': median,
-            'distribution': dist_name
+            'empirical_log_values': sorted_log_values,
+            'empirical_cdf_percent': empirical_cdf * 100,
+            'fitted_log_values': fitted_log_values,
+            'fitted_cdf_percent': fitted_cdf_percent,
+            'log_hcp': log_hcp,
+            'hcp_p_percent': p_value,
+            'species': data[species_col].tolist() if species_col in data else []
         }
         return hcp, params, plot_data, None
     except Exception as e:
