@@ -955,11 +955,11 @@ with st.sidebar:
         help="The percentile 'p' for which to calculate the HCp (e.g., 5 for HC5)."
     )
 
-    # *** MODIFIED: Button enabling logic ***
+    # *** MODIFIED: Button enabling logic for multi-select ***
     is_ready_to_generate = (
         uploaded_file is not None and
-        selected_chemical is not None and
-        not selected_chemical.startswith("--") # Ensure a valid chemical is selected
+        selected_chemicals and
+        all([c not in (None, "-- Upload File First --", "-- Error Reading File --") for c in selected_chemicals])
     )
     generate_button = st.button("🚀 Generate SSD", disabled=(not is_ready_to_generate))
 
