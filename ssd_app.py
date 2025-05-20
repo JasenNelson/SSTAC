@@ -622,6 +622,8 @@ if supabase_conn is None:
     st.stop()
 
 def fetch_chemicals():
+    chemical_groups = {}
+    chem_data = []
     """Fetch chemicals from Supabase and process them.
     
     Returns:
@@ -773,6 +775,9 @@ if supabase_conn:
                 chem_df = pd.DataFrame(chem_data)
                 st.dataframe(chem_df, hide_index=True)
 
+        # Ensure chemical_groups is defined before use in the try-except block
+        if 'chemical_groups' not in locals():
+            chemical_groups = {}
         try:
             # Show chemical group distribution
             st.write("Chemical Group Distribution:")
