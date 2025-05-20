@@ -646,6 +646,7 @@ def fetch_chemicals(search_term=None):
         # Check if we got any data
         if not chemicals.data:
             st.error("No records found in the toxicology_data table")
+            st.session_state.chemical_groups = chemical_groups
             return False
             
         # Convert to DataFrame
@@ -896,8 +897,8 @@ configure parameters to generate the SSD.
 
 # --- Initialize Session State ---
 # Use session state to prevent resetting dropdown when other widgets change
-if 'selected_chemical' not in st.session_state:
-    st.session_state.selected_chemical = "-- Select Chemical --"
+if 'selected_chemicals' not in st.session_state:
+    st.session_state.selected_chemicals = []
 if 'file_processed_chem_list' not in st.session_state:
     st.session_state.file_processed_chem_list = None
 
