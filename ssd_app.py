@@ -785,7 +785,7 @@ if supabase_conn:
                                 chem_data.append({
                                     'id': chem.id,
                                     'chemical_name': chem.chemical_name,
-                                    'cas_number': chem.cas_number,
+                                    'cas_number': chem.test_cas,
                                     'group': chemical_group,
                                     'occurrences': 1
                                 })
@@ -906,10 +906,11 @@ with st.sidebar:
                 st.session_state.file_processed_chem_list = get_chemical_options(uploaded_file)
         chemical_options = st.session_state.file_processed_chem_list or ["-- Error Reading File --"]
 
-    # Chemical search (always visible after file upload)
+    # Chemical search and filters (always visible after file upload)
     if uploaded_file is not None:
+        st.markdown("### Chemical Search and Filters")
         search_term = st.text_input(
-            "Search Toxicology Data",
+            "1. Search Toxicology Data",
             key="chem_search",
             help="You can now search for any part of a chemical name (e.g., 'ace' will match 'Acetone'). Enter at least 3 characters."
         )
@@ -917,22 +918,23 @@ with st.sidebar:
             st.warning("Please enter at least 3 characters to search any part of the chemical name.")
             search_term = None
         group_options = st.multiselect(
-            "Filter by Group",
-            options=["All"] + sorted(set([chem.get('group', 'Unknown') for chem in st.session_state.chemicals_data])) if st.session_state.chemicals_data else ["All"],
+            "2. Filter by Group",
+            options=["All"] + sorted(set([chem.get('group', 'Unknown') for chem in st.session_state.get('chemicals_data', [])])),
             default=["All"],
             key="group_filter",
             help="Select chemical groups to filter the search results"
         )
         media_options = st.multiselect(
-            "Filter by Media",
+            "3. Filter by Media",
             options=['All', 'Water/Wastewater', 'Soil/Sediment', 'Air', 'Biota', 'Food'],
             default=['All'],
             key="media_filter",
             help="Select media types to filter the toxicology data based on their measurement units"
         )
+        chemical_options = [chem['chemical_name'] for chem in st.session_state.get('chemicals_data', [])] if st.session_state.get('chemicals_data') else st.session_state.file_processed_chem_list or ["-- Error Reading File --"]
         selected_chemicals = st.multiselect(
-            "Select Chemicals",
-            options=[chem['chemical_name'] for chem in st.session_state.chemicals_data] if st.session_state.chemicals_data else [],
+            "4. Select Chemicals",
+            options=chemical_options,
             help="Select multiple chemicals by holding Ctrl/Cmd"
         )
 
