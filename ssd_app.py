@@ -720,6 +720,7 @@ if supabase_conn:
         )
 
         # Add fetch chemicals button with unique key
+        chem_data = []  # Ensure chem_data is always defined
         if st.button("Fetch Toxicology Data from Supabase", key="fetch_chemicals_btn"):
             try:
                 with st.spinner("Fetching chemical list from Supabase..."):
