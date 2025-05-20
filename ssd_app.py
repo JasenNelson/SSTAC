@@ -715,7 +715,7 @@ if supabase_conn:
                 st.exception(e)
 
             for chem in df.itertuples(index=False):
-                if chem.name and chem.name not in seen_chemicals:
+                if chem.chemical_name and chem.chemical_name not in seen_chemicals:
                     # Determine chemical group based on species group
                     species_group = chem.group if chem.group else "Unknown"
                     chemical_group = get_chemical_group(species_group)
@@ -733,8 +733,8 @@ if supabase_conn:
                         'group': chemical_group,
                         'occurrences': 1
                     })
-                    seen_chemicals.add(chem.name)
-                elif chem.name in seen_chemicals:
+                    seen_chemicals.add(chem.chemical_name)
+                elif chem.chemical_name in seen_chemicals:
                     # Update count for existing chemicals
                     for item in chem_data:
                         if item['chemical_name'] == chem.chemical_name:
