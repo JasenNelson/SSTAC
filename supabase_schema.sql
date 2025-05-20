@@ -1,5 +1,5 @@
--- Create chemicals table
-CREATE TABLE IF NOT EXISTS chemicals (
+-- Create toxicology_data table
+CREATE TABLE IF NOT EXISTS toxicology_data (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name TEXT NOT NULL,
     cas_number TEXT,
@@ -8,24 +8,24 @@ CREATE TABLE IF NOT EXISTS chemicals (
 );
 
 -- Add RLS policies
-ALTER TABLE chemicals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE toxicology_data ENABLE ROW LEVEL SECURITY;
 
--- Allow authenticated users to select from chemicals
-CREATE POLICY "Authenticated users can view chemicals"
-    ON chemicals FOR SELECT
-    TO authenticated
+-- Allow autToxicology Datated users to select from toxicology_data
+CREATE POLICY "AutToxicology Datated users can view toxicology_data"
+    ON toxicology_data FOR SELECT
+    TO autToxicology Datated
     USING (true);
 
--- Allow authenticated users to insert into chemicals
-CREATE POLICY "Authenticated users can insert chemicals"
-    ON chemicals FOR INSERT
-    TO authenticated
+-- Allow autToxicology Datated users to insert into toxicology_data
+CREATE POLICY "AutToxicology Datated users can insert toxicology_data"
+    ON toxicology_data FOR INSERT
+    TO autToxicology Datated
     WITH CHECK (true);
 
--- Allow authenticated users to update chemicals
-CREATE POLICY "Authenticated users can update chemicals"
-    ON chemicals FOR UPDATE
-    TO authenticated
+-- Allow autToxicology Datated users to update toxicology_data
+CREATE POLICY "AutToxicology Datated users can update toxicology_data"
+    ON toxicology_data FOR UPDATE
+    TO autToxicology Datated
     USING (true)
     WITH CHECK (true);
 
@@ -39,7 +39,7 @@ END;
 $$ language 'plpgsql';
 
 -- Create trigger to update updated_at timestamp
-CREATE TRIGGER update_chemicals_updated_at
-    BEFORE UPDATE ON chemicals
+CREATE TRIGGER update_toxicology_data_updated_at
+    BEFORE UPDATE ON toxicology_data
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();

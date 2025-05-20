@@ -39,6 +39,9 @@ UNIQUE_KEY_COLUMNS_FOR_TEST = ["test_cas", "species_scientific_name", "endpoint"
 # Option 2: Using the name of the constraint you created in SQL
 # UNIQUE_CONSTRAINT_NAME_FOR_TEST = "unique_tox_record_key" # Replace with your actual constraint name
 
+# --- Table Name Constants ---
+TABLE_CHEMICALS = "toxicology_data"
+
 def run_db_operations_test():
     logging.info("--- Starting Database Operations Test ---")
     supabase = init_supabase_client()
@@ -126,7 +129,6 @@ def run_db_operations_test():
     else:
         logging.error("  ERROR: Upsert Scenario B did not return any processed records.")
 
-
     # Scenario C: Attempt to insert what would be a duplicate if not for upsert
     # Using record1_new again, should just be an update (or no change if identical)
     logging.info("\nUPSERT SCENARIO C: Upserting record1_new again (should be an update to its current state)...")
@@ -158,8 +160,8 @@ def run_db_operations_test():
         else:
             logging.warning("  WARNING: Record1 re-upsert state is not as expected. Check DB. It should now reflect 'mortality' and 'TestChem Alpha'.")
 
-
     logging.info("--- Database Operations Test Finished ---")
+    logging.info(f">>> Please check your Supabase '{TABLE_CHEMICALS}' table to verify results and your log file. <<<")
     logging.info(">>> Please check your Supabase 'toxicology_data' table to verify results and your log file. <<<")
 
 if __name__ == "__main__":

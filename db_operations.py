@@ -9,6 +9,9 @@ import json # Will be used if 'validation_errors' column is TEXT
 # For now, assume logger is configured by the caller (e.g., test_db_ops.py or main_agent.py)
 # logger = logging.getLogger(__name__) # Alternative if you want module-specific logger
 
+# --- Table Name Constants ---
+TABLE_CHEMICALS = "toxicology_data"
+
 def insert_toxicology_records(supabase_client: Client, records: list[dict]) -> list[dict]:
     """
     Inserts a list of toxicology record dictionaries into the 'toxicology_data' table.
@@ -76,6 +79,9 @@ def insert_toxicology_records(supabase_client: Client, records: list[dict]) -> l
         logging.error(f"db_operations: An exception occurred during Supabase batch insert: {e}", exc_info=True)
         return []
 
+
+# --- Table Name Constants ---
+TABLE_CHEMICALS = "toxicology_data"
 
 def upsert_toxicology_records(supabase_client: Client, records: list[dict],
                              conflict_constraint_name: str | None = None,
