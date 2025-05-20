@@ -637,9 +637,10 @@ def fetch_chemicals(search_term=None):
         # Use ilike for wildcard, case-insensitive search if search_term is provided
         # Only select required columns and limit the number of records to avoid timeouts
         columns = "id, test_cas, chemical_name, species_scientific_name, species_common_name, species_group, endpoint, effect, conc1_mean, conc1_unit"
-        query = supabase_conn.table("toxicology_data").select(columns).limit(1000)
+        query = supabase_conn.table("toxicology_data").select(columns)
         if search_term and search_term.strip():
             query = query.ilike("chemical_name", f"%{search_term.strip()}%")
+        query = query.limit(1000)
         chemicals = query.execute()
         
         # Check if we got any data
