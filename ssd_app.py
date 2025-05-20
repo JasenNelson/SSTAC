@@ -1,4 +1,8 @@
 import streamlit as st 
+
+# --- Table Name Constants ---
+TABLE_CHEMICALS = "toxicology_data"
+
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -136,7 +140,7 @@ except Exception as e:
     st.error("1. Your Supabase URL and anon key are correct")
     st.error("2. The URL is accessible")
     st.error("3. The anon key has the correct permissions")
-    st.error("4. The database table 'chemicals' exists")
+    st.error("4. The database table TABLE_CHEMICALS exists")
     st.error("Full traceback:")
     import traceback
     st.error(traceback.format_exc())
@@ -580,12 +584,12 @@ def initialize_supabase_connection():
             # Test the connection
             try:
                 # Try a simple query to test the connection
-                test_result = supabase_conn.table("chemicals").select("name").limit(1).execute()
+                test_result = supabase_conn.table(TABLE_CHEMICALS).select("name").limit(1).execute()
                 if len(test_result.data) > 0:
                     st.success("Successfully connected to Supabase!")
                     return supabase_conn
                 else:
-                    raise ValueError("Supabase connection successful but chemicals table not found")
+                    raise ValueError("Supabase connection successful but toxicology_data table not found")
             except Exception as e:
                 raise ValueError(f"Failed to test Supabase connection: {str(e)}")
         except Exception as e:
@@ -619,7 +623,7 @@ def fetch_chemicals():
         
         # Check if we got any data
         if not chemicals.data:
-            st.error("No chemicals found in the database")
+            st.error("No records found in the toxicology_data table")
             return False
             
         # Convert to DataFrame
@@ -655,7 +659,7 @@ def fetch_chemicals():
         
         return True
     except Exception as e:
-        st.error(f"Failed to fetch chemicals: {str(e)}")
+        st.error(f"Failed to fetch records from toxicology_data: {str(e)}")
         st.exception(e)
         return False
 
@@ -665,7 +669,7 @@ if supabase_conn:
         st.write("Manage your chemical database:")
         
         # Add search box
-        search_term = st.text_input("Search Chemicals", key="chem_search")
+        search_term = st.text_input("Search Toxicology Data", key="chem_search")
         
         # Add group filter
         group_options = st.multiselect(
@@ -697,17 +701,17 @@ if supabase_conn:
             options=['All', 'Water/Wastewater', 'Soil/Sediment', 'Air', 'Biota', 'Food'],
             default=['All'],
             key="media_filter",
-            help="Select media types to filter the chemicals based on their measurement units"
+            help="Select media types to filter the toxicology data based on their measurement units"
         )
 
         # Add fetch chemicals button with unique key
-        if st.button("Fetch Chemical List from Supabase", key="fetch_chemicals_btn"):
+        if st.button("Fetch Toxicology Data from Supabase", key="fetch_chemicals_btn"):
             try:
                 with st.spinner("Fetching chemical list from Supabase..."):
                     if fetch_chemicals():
                         st.success("Successfully fetched chemicals!")
             except Exception as e:
-                st.error(f"Failed to fetch chemicals: {str(e)}")
+                st.error(f"Failed to fetch records from toxicology_data: {str(e)}")
                 st.exception(e)
 
             for chem in df.itertuples(index=False):
