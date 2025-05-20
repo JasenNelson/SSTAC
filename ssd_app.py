@@ -914,13 +914,13 @@ with st.sidebar:
          st.session_state.selected_chemical = chemical_options[0]
 
 
-    selected_chemical = st.selectbox(
-        "2. Select Chemical Name",
+    selected_chemicals = st.multiselect(
+        "2. Select Chemical Name(s)",
         options=chemical_options,
-        index=current_selection_index, # Use index to set default/current value
-        key='selected_chemical', # Use key to link to session state
-        disabled=(uploaded_file is None), # Disable if no file or error
-        help="Select the chemical from the list derived from your uploaded file."
+        default=[chemical_options[current_selection_index]] if chemical_options and chemical_options[0] != "-- Upload File First --" else [],
+        key='selected_chemicals',
+        disabled=(uploaded_file is None),
+        help="Select one or more chemicals from the list derived from your uploaded file."
     )
 
     st.subheader("SSD Parameters")
@@ -1007,16 +1007,16 @@ if generate_button and is_ready_to_generate: # Check readiness flag
         st.write(f"1. Filtering for Chemical: '{selected_chemical}'")
         # Ensure column is string type and strip whitespace just in case
         df[name_col] = df[name_col].astype(str).str.strip()
-        # Exact match filtering
-        chem_filter = (df[name_col] == selected_chemical)
+        # Filter for selected chemicals (list)
+        chem_filter = df[name_col].isin(selected_chemicals)
         filtered_df = df[chem_filter].copy()
         # --- End Modification ---
 
         if filtered_df.empty:
-            st.warning(f"⚠️ No data found for chemical '{selected_chemical}'.")
+            st.warning(f"⚠️ No data found for selected chemicals: {', '.join(selected_chemicals)}.")
             st.stop()
 
-        st.write(f"   Found {len(filtered_df)} initial records for the chemical.")
+        st.write(f"   Found {len(filtered_df)} initial records for the selected chemical(s).")
 
         # --- Steps 2-6: Remain largely the same ---
         # (Endpoint filtering, Data Cleaning, Aggregation, Requirement Checks, SSD Calculation)
