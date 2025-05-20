@@ -925,7 +925,7 @@ with st.sidebar:
         )
         # Show a warning only if there are truly no valid chemical names
         valid_chem_names = [opt for opt in current_chemical_options if not opt.startswith('--') and opt.strip()]
-        st.write(f"[DEBUG] Chemical dropdown options: {current_chemical_options}")
+
         if len(valid_chem_names) == 0:
             st.warning("No valid chemical names found. Please check your file format or Supabase data.")
 
