@@ -909,9 +909,13 @@ with st.sidebar:
     # Chemical search and filters (visible after file upload OR Supabase fetch)
     if uploaded_file is not None or st.session_state.chemicals_loaded:
         st.markdown("### Chemical Search and Filters")
+        if uploaded_file is not None:
+            key_suffix = '_file'
+        else:
+            key_suffix = '_supabase'
         search_term = st.text_input(
             "1. Search Toxicology Data",
-            key="chem_search",
+            key=f"chem_search{key_suffix}",
             help="You can now search for any part of a chemical name (e.g., 'ace' will match 'Acetone'). Enter at least 3 characters."
         )
         if search_term and len(search_term.strip()) < 3:
@@ -921,20 +925,21 @@ with st.sidebar:
             "2. Filter by Group",
             options=["All"] + sorted(set([chem.get('group', 'Unknown') for chem in st.session_state.get('chemicals_data', [])])),
             default=["All"],
-            key="group_filter",
+            key=f"group_filter{key_suffix}",
             help="Select chemical groups to filter the search results"
         )
         media_options = st.multiselect(
             "3. Filter by Media",
             options=['All', 'Water/Wastewater', 'Soil/Sediment', 'Air', 'Biota', 'Food'],
             default=['All'],
-            key="media_filter",
+            key=f"media_filter{key_suffix}",
             help="Select media types to filter the toxicology data based on their measurement units"
         )
         chemical_options = [chem['chemical_name'] for chem in st.session_state.get('chemicals_data', [])] if st.session_state.get('chemicals_data') else st.session_state.file_processed_chem_list or ["-- Error Reading File --"]
         selected_chemicals = st.multiselect(
             "4. Select Chemicals",
             options=chemical_options,
+            key=f"selected_chemicals{key_suffix}",
             help="Select multiple chemicals by holding Ctrl/Cmd"
         )
 
