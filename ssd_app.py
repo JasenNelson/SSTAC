@@ -719,6 +719,16 @@ if supabase_conn:
             help="Select media types to filter the toxicology data based on their measurement units"
         )
 
+        # --- Ensure session state variables are initialized ---
+        if 'chemical_groups' not in st.session_state:
+            st.session_state.chemical_groups = {}
+        if 'chemicals_data' not in st.session_state:
+            st.session_state.chemicals_data = []
+        if 'chemicals_loaded' not in st.session_state:
+            st.session_state.chemicals_loaded = False
+        if 'file_processed_chem_list' not in st.session_state:
+            st.session_state.file_processed_chem_list = []
+
         # Add fetch chemicals button with unique key
         chem_data = []  # Ensure chem_data is always defined
         if st.button("Fetch Toxicology Data from Supabase", key="fetch_chemicals_btn"):
