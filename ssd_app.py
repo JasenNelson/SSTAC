@@ -521,18 +521,8 @@ def calculate_ssd(data, species_col, value_col, dist_name, p_value):
     except Exception as e:
         st.error(f"Error calculating SSD: {str(e)}")
         return None, None, None, str(e)
-    fitted_cdf_percent = prob_range * 100
-    plot_data = {
-        'empirical_log_values': sorted_log_values,
-        'empirical_cdf_percent': empirical_cdf,
-        'fitted_log_values': fitted_log_values,
-        'fitted_cdf_percent': fitted_cdf_percent,
-        'log_hcp': log_hcp,
-        'hcp_p_percent': p_value,
-        'species': valid_data[species_col]
-    }
-    return hcp, params, plot_data, None
 
+# --- SSD Plotting Function ---
 def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
     """ Generates the SSD Plotly figure with x-axis in real concentration units (log scale). """
     if plot_data is None: return go.Figure()
@@ -545,15 +535,15 @@ def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=empirical_x, y=plot_data['empirical_cdf_percent'], mode='markers', name='Species Data',
-        marker=dict(color='blue', size=8),
+        marker=dict(color='#2E4053', size=8, symbol='circle', opacity=0.8),
         hovertext=[f"Species: {sp}<br>Conc: {x:.2g} {unit}" for sp, x in zip(plot_data['species'], empirical_x)], hoverinfo='text'
     ))
     fig.add_trace(go.Scatter(
-        x=fitted_x, y=plot_data['fitted_cdf_percent'], mode='lines', name=f'Fitted {dist_name} CDF', line=dict(color='red', dash='dash')
+        x=fitted_x, y=plot_data['fitted_cdf_percent'], mode='lines', name=f'Fitted {dist_name} CDF', line=dict(color='#FFC107', dash='dash', width=2)
     ))
     # Mark the HCp point if valid
     if hcp_x is not None and hcp_x > 0:
-        fig.add_trace(go.Scatter(x=[hcp_x], y=[p_value*100], mode='markers', marker=dict(color='red', size=10, symbol='x'), name=f'HC{p_value}'))
+        fig.add_trace(go.Scatter(x=[hcp_x], y=[p_value*100], mode='markers', marker=dict(color='#FFC107', size=10, symbol='x', opacity=0.8), name=f'HC{p_value}'))
     # Compute axis range to include all points and HCp
     all_x = np.concatenate([empirical_x, fitted_x, [hcp_x] if hcp_x is not None and hcp_x > 0 else []])
     all_x = all_x[all_x > 0]  # Remove non-positive values for log scale
@@ -566,41 +556,27 @@ def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
         fig.update_xaxes(type="log")
     fig.update_layout(
         title='Species Sensitivity Distribution (SSD)',
+        title_x=0.5,
+        title_font_size=18,
         xaxis_title=f'Concentration ({unit})',
+        xaxis_title_font_size=14,
         yaxis_title='Percent of Species Affected (%)',
+        yaxis_title_font_size=14,
         legend_title='Legend',
-        yaxis=dict(range=[0, 100]),
-        hovermode='closest'
+        legend_title_font_size=14,
+        legend_font_size=12,
+        yaxis=dict(range=[0, 100], gridwidth=1, gridcolor='#E5E5EA'),
+        xaxis=dict(gridwidth=1, gridcolor='#E5E5EA'),
+        hovermode='closest',
+        plot_bgcolor='#F7F7F7',
+        paper_bgcolor='#FFFFFF'
     )
     return fig
 
-
-def get_chemical_options(uploaded_file):
-    """Reads the file to extract unique chemical names for the dropdown."""
-    if uploaded_file is None:
-        return ["-- Upload File First --"]
-
+def get_chemical_names(df_chem, chem_col):
+    """Extracts and returns a sorted list of unique chemical names from the specified column in df_chem."""
     try:
-        file_content = uploaded_file.getvalue()
-        df_chem = None
-        chem_col = ECOTOX_EXPECTED_COLS['chemical']
-        # Try reading as CSV first (more common for processed files)
-        try:
-            df_chem = pd.read_csv(StringIO(file_content.decode('latin-1')), sep=',', usecols=[chem_col]) # Read only chemical column
-        except (ValueError, KeyError): # Handle cases where column doesn't exist or file is not comma-separated
-             pass # Try next format
-
-        # Fallback to tab-separated
-        if df_chem is None:
-            try:
-                 uploaded_file.seek(0) # Reset file pointer
-                 df_chem = pd.read_csv(StringIO(file_content.decode('latin-1')), sep='\t', usecols=[chem_col])
-            except (ValueError, KeyError):
-                 return ["-- Error: Cannot find 'chemical_name' column or parse file --"]
-            except Exception: # Catch other potential parsing errors
-                 return ["-- Error: Cannot parse file header --"]
-
-        if df_chem is not None and chem_col in df_chem.columns:
+        if chem_col in df_chem.columns:
             unique_names = df_chem[chem_col].dropna().astype(str).str.strip().unique()
             if len(unique_names) > 0:
                 sorted_names = sorted([name for name in unique_names if name]) # Exclude empty strings
@@ -608,12 +584,12 @@ def get_chemical_options(uploaded_file):
             else:
                 return ["-- No Chemical Names Found --"]
         else:
-             return ["-- Error: 'chemical_name' column missing --"]
-
+            return ["-- Error: 'chemical_name' column missing --"]
     except Exception as e:
         # General error catching during the read attempt
         st.error(f"Error reading file for chemical list: {e}")
         return ["-- Error Reading File --"]
+
 
 def initialize_supabase_connection():
     """Initialize and test Supabase connection with proper error handling.
