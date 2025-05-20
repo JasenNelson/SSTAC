@@ -651,7 +651,7 @@ def fetch_chemicals(search_term=None):
             
         # Convert to DataFrame
         df = pd.DataFrame(chemicals.data)
-        st.write('Fetched columns:', df.columns.tolist())  # Show columns for verification
+        
 
         # Display grouped summary by chemical_name
         grouped = df.groupby('chemical_name').size().reset_index(name='count')
