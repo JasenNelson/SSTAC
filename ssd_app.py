@@ -726,49 +726,48 @@ if supabase_conn:
                 with st.spinner("Fetching chemical list from Supabase..."):
                     if fetch_chemicals(search_term=search_term):
                         st.success("Successfully fetched chemicals!")
+                chemicals_data = st.session_state.get("chemicals_data", [])
+                chem_data = []
+                if chemicals_data:
+                    df = pd.DataFrame(chemicals_data)
+                    for chem in df.itertuples(index=False):
+                        if chem.chemical_name and chem.chemical_name not in seen_chemicals:
+                            # Determine chemical group based on species group
+                            species_group = chem.group if chem.group else "Unknown"
+                            chemical_group = get_chemical_group(species_group)
+
+                            # Track chemical groups
+                            if chemical_group not in chemical_groups:
+                                chemical_groups[chemical_group] = 0
+                                chemical_groups[chemical_group] += 1
+
+                                # Add chemical data
+                                chem_data.append({
+                                    'id': chem.id,
+                                    'chemical_name': chem.chemical_name,
+                                    'cas_number': chem.cas_number,
+                                    'group': chemical_group,
+                                    'occurrences': 1
+                                })
+                                seen_chemicals.add(chem.chemical_name)
+                            elif chem.chemical_name in seen_chemicals:
+                                # Update count for existing chemicals
+                                for item in chem_data:
+                                    if item['chemical_name'] == chem.chemical_name:
+                                        item['occurrences'] += 1
+                                        break
+                        # Store in session state
+                        st.session_state.chemicals_data = chem_data
+                        st.session_state.chemicals_loaded = True
+
+                        # Update chemical options
+                        if 'file_processed_chem_list' not in st.session_state:
+                            st.session_state.file_processed_chem_list = []
+                        st.session_state.file_processed_chem_list = [chem['chemical_name'] for chem in chem_data]
+                        st.session_state.chemical_groups = chemical_groups
             except Exception as e:
                 st.error(f"Failed to fetch records from toxicology_data: {str(e)}")
                 st.exception(e)
-
-            chemicals_data = st.session_state.get("chemicals_data", [])
-            chem_data = []
-            if chemicals_data:
-                df = pd.DataFrame(chemicals_data)
-                for chem in df.itertuples(index=False):
-                    if chem.chemical_name and chem.chemical_name not in seen_chemicals:
-                        # Determine chemical group based on species group
-                        species_group = chem.group if chem.group else "Unknown"
-                        chemical_group = get_chemical_group(species_group)
-
-                        # Track chemical groups
-                        if chemical_group not in chemical_groups:
-                            chemical_groups[chemical_group] = 0
-                            chemical_groups[chemical_group] += 1
-
-                            # Add chemical data
-                            chem_data.append({
-                                'id': chem.id,
-                                'chemical_name': chem.chemical_name,
-                                'cas_number': chem.cas_number,
-                                'group': chemical_group,
-                                'occurrences': 1
-                            })
-                            seen_chemicals.add(chem.chemical_name)
-                        elif chem.chemical_name in seen_chemicals:
-                            # Update count for existing chemicals
-                            for item in chem_data:
-                                if item['chemical_name'] == chem.chemical_name:
-                                    item['occurrences'] += 1
-                                    break
-                    # Store in session state
-                    st.session_state.chemicals_data = chem_data
-                    st.session_state.chemicals_loaded = True
-
-                    # Update chemical options
-                    if 'file_processed_chem_list' not in st.session_state:
-                        st.session_state.file_processed_chem_list = []
-                    st.session_state.file_processed_chem_list = [chem['chemical_name'] for chem in chem_data]
-                    st.session_state.chemical_groups = chemical_groups
 
     st.success(f"Successfully fetched {len(chem_data)} unique chemicals from Supabase!")
 
