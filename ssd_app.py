@@ -803,7 +803,7 @@ if st.session_state.chemicals_loaded:
     filtered_chems = st.session_state.chemicals_data
     if search_term:
         filtered_chems = [chem for chem in filtered_chems 
-                        if search_term.lower() in chem['chemical_name'].lower()]
+                        if chem['chemical_name'].strip().lower() == search_term.strip().lower()]
     
     # Filter by groups
     if 'All' not in group_options:
