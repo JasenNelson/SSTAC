@@ -732,6 +732,7 @@ if supabase_conn:
             chemicals_data = st.session_state.get("chemicals_data", [])
             if chemicals_data:
                 df = pd.DataFrame(chemicals_data)
+                chem_data = []
                 for chem in df.itertuples(index=False):
                     if chem.chemical_name and chem.chemical_name not in seen_chemicals:
                         # Determine chemical group based on species group
