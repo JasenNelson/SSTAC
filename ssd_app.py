@@ -55,8 +55,7 @@ def initialize_supabase_connection():
                 source = "environment variables"
         # Debug info (mask key)
         if supabase_url and supabase_key:
-            masked_key = supabase_key[:4] + "..." + supabase_key[-4:]
-            st.info(f"Using Supabase credentials from {source}. URL: {supabase_url}, Key: {masked_key}")
+            st.info("Using Supabase credentials from " + source)
         # If still missing, error
         if not supabase_url or not supabase_key:
             st.error("Supabase configuration not found. Please add your credentials to Streamlit secrets or environment variables.")
@@ -639,7 +638,8 @@ def fetch_chemicals(search_term=None):
         columns = "id, test_cas, chemical_name, species_scientific_name, species_common_name, species_group, endpoint, effect, conc1_mean, conc1_unit"
         query = supabase_conn.table("toxicology_data").select(columns)
         if search_term and search_term.strip():
-            query = query.ilike("chemical_name", f"{search_term.strip()}%")
+            # Substring search using trigram index
+            query = query.ilike("chemical_name", f"%{search_term.strip()}%")
         query = query.limit(1000)
         chemicals = query.execute()
         
@@ -703,15 +703,15 @@ if supabase_conn:
     with st.expander("Chemical Management", expanded=False):
         st.write("Manage your chemical database:")
         
-        # Add search box with guidance for prefix search
+        # Add search box with guidance for substring search (trigram index enabled)
         search_term = st.text_input(
             "Search Toxicology Data",
             key="chem_search",
-            help="Type the beginning of a chemical name (e.g., 'lead') for best results. Broad or empty searches are not supported."
+            help="You can now search for any part of a chemical name (e.g., 'ace' will match 'Acetone' or 'Tris(2-chloroethyl) phosphate'). For best performance, enter at least 3 characters."
         )
         # Input validation: warn if search term is too short
-        if search_term and len(search_term.strip()) < 2:
-            st.warning("Please enter at least 2 characters to search by the beginning of the chemical name.")
+        if search_term and len(search_term.strip()) < 3:
+            st.warning("Please enter at least 3 characters to search any part of the chemical name.")
             search_term = None  # Prevent fetch_chemicals from running
         
         # Add group filter
@@ -915,60 +915,46 @@ with st.sidebar:
          if uploaded_file != st.session_state.get('last_uploaded_file', None) or st.session_state.file_processed_chem_list is None:
               st.session_state.last_uploaded_file = uploaded_file
               with st.spinner("Reading chemical list..."):
-                    st.session_state.file_processed_chem_list = get_chemical_options(uploaded_file)
-              # Reset selection if file changes
-              st.session_state.selected_chemical = st.session_state.file_processed_chem_list[0] if st.session_state.file_processed_chem_list else "-- Error --"
-
+                     st.session_state.file_processed_chem_list = get_chemical_options(uploaded_file)
          chemical_options = st.session_state.file_processed_chem_list or ["-- Error Reading File --"]
 
+    # Always show SSD parameter controls after file upload
+    if uploaded_file is not None:
+        selected_chemicals = st.multiselect(
+            "2. Select Chemical Name(s)",
+            options=chemical_options,
+            default=[],
+            key='selected_chemicals',
+            disabled=(chemical_options[0].startswith('--')),  # Disable if no valid options
+            help="Select one or more chemicals from the list derived from your uploaded file."
+        )
 
-    # *** MODIFIED: Use Selectbox ***
-    # Find the index of the currently selected chemical to maintain state
-    current_selection_index = 0
-    if st.session_state.selected_chemical in chemical_options:
-         current_selection_index = chemical_options.index(st.session_state.selected_chemical)
-    elif len(chemical_options) > 0:
-         # Fallback if previous selection is somehow not in the new list
-         current_selection_index = 0
-         st.session_state.selected_chemical = chemical_options[0]
+        st.subheader("SSD Parameters")
 
-
-    selected_chemicals = st.multiselect(
-        "2. Select Chemical Name(s)",
-        options=chemical_options,
-        default=[chemical_options[current_selection_index]] if chemical_options and chemical_options[0] != "-- Upload File First --" else [],
-        key='selected_chemicals',
-        disabled=(uploaded_file is None),
-        help="Select one or more chemicals from the list derived from your uploaded file."
-    )
-
-    st.subheader("SSD Parameters")
-
-    # --- Keep the rest of the sidebar inputs the same ---
-    endpoint_type = st.radio(
-        "3. Endpoint Type", ('Acute (LC50, EC50)', 'Chronic (NOEC, LOEC, EC10)'), index=0,
-        help="Select the general type of endpoint to include."
-    )
-    min_species = st.number_input(
-        "4. Minimum Number of Species", min_value=3, value=5, step=1,
-        help="Minimum unique species required after filtering."
-    )
-    required_taxa_broad = st.multiselect(
-        "5. Required Taxonomic Groups", options=list(TAXONOMIC_MAPPING.keys()), default=list(TAXONOMIC_MAPPING.keys())[:3],
-        help="Select the broad taxonomic groups that *must* be represented."
-    )
-    data_handling = st.radio(
-        "6. Handle Multiple Values per Species", ('Use Geometric Mean', 'Use Most Sensitive (Minimum Value)'), index=0,
-        help="How to aggregate multiple data points for the same species."
-    )
-    distribution_fit = st.selectbox(
-        "7. Distribution for Fitting", ('Log-Normal', 'Log-Logistic'), index=0,
-        help="Statistical distribution to fit to the log-transformed data."
-    )
-    hcp_percentile = st.number_input(
-        "8. Hazard Concentration (HCp) Percentile", min_value=0.1, max_value=99.9, value=5.0, step=0.1, format="%.1f",
-        help="The percentile 'p' for which to calculate the HCp (e.g., 5 for HC5)."
-    )
+        endpoint_type = st.radio(
+            "3. Endpoint Type", ('Acute (LC50, EC50)', 'Chronic (NOEC, LOEC, EC10)'), index=0,
+            help="Select the general type of endpoint to include."
+        )
+        min_species = st.number_input(
+            "4. Minimum Number of Species", min_value=3, value=5, step=1,
+            help="Minimum unique species required after filtering."
+        )
+        required_taxa_broad = st.multiselect(
+            "5. Required Taxonomic Groups", options=list(TAXONOMIC_MAPPING.keys()), default=list(TAXONOMIC_MAPPING.keys())[:3],
+            help="Select the broad taxonomic groups that *must* be represented."
+        )
+        data_handling = st.radio(
+            "6. Handle Multiple Values per Species", ('Use Geometric Mean', 'Use Most Sensitive (Minimum Value)'), index=0,
+            help="How to aggregate multiple data points for the same species."
+        )
+        distribution_fit = st.selectbox(
+            "7. Distribution for Fitting", ('Log-Normal', 'Log-Logistic'), index=0,
+            help="Statistical distribution to fit to the log-transformed data."
+        )
+        hcp_percentile = st.number_input(
+            "8. Hazard Concentration (HCp) Percentile", min_value=0.1, max_value=99.9, value=5.0, step=0.1, format="%.1f",
+            help="The percentile 'p' for which to calculate the HCp (e.g., 5 for HC5)."
+        )
 
     # *** MODIFIED: Button enabling logic for multi-select ***
     is_ready_to_generate = (
