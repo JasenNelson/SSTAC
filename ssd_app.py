@@ -22,14 +22,51 @@ def initialize_supabase_connection():
         Supabase client: The initialized Supabase connection or None if failed
     """
     try:
-        # First try to get credentials from Streamlit secrets (for Streamlit Cloud)
         supabase_url = None
         supabase_key = None
+        source = None
+        # 1. Try Streamlit secrets [connections.supabase]
         if hasattr(st, "secrets"):
+            connections_supabase = st.secrets.get("connections", {}).get("supabase", {})
+            if connections_supabase.get("url") and connections_supabase.get("key"):
+                supabase_url = connections_supabase.get("url")
+                supabase_key = connections_supabase.get("key")
+                source = "[connections.supabase]"
+        # 2. Try Streamlit secrets [supabase]
+        if (not supabase_url or not supabase_key) and hasattr(st, "secrets"):
             supabase_secrets = st.secrets.get("supabase", {})
-            supabase_url = supabase_secrets.get("url")
-            supabase_key = supabase_secrets.get("anon_key")
-        
+            if supabase_secrets.get("url") and supabase_secrets.get("anon_key"):
+                supabase_url = supabase_secrets.get("url")
+                supabase_key = supabase_secrets.get("anon_key")
+                source = "[supabase]"
+        # 3. Try environment variables
+        if (not supabase_url or not supabase_key):
+            import os
+            env_url = os.environ.get("SUPABASE_URL")
+            env_key = os.environ.get("SUPABASE_KEY")
+            if env_url and env_key:
+                supabase_url = env_url
+                supabase_key = env_key
+                source = "environment variables"
+        # Debug info (mask key)
+        if supabase_url and supabase_key:
+            masked_key = supabase_key[:4] + "..." + supabase_key[-4:]
+            st.info(f"Using Supabase credentials from {source}. URL: {supabase_url}, Key: {masked_key}")
+        # If still missing, error
+        if not supabase_url or not supabase_key:
+            st.error("Supabase configuration not found. Please add your credentials to Streamlit secrets or environment variables.")
+            st.error("Checked sources in order: [connections.supabase], [supabase], environment variables.")
+            st.error("Example [supabase] section in .streamlit/secrets.toml:")
+            st.code("""[supabase]\nurl = \"https://your-project.supabase.co\"\nanon_key = \"your-anon-key-here\"\n""", language="toml")
+            st.error("Example [connections.supabase] section in .streamlit/secrets.toml:")
+            st.code("""[connections.supabase]\nurl = \"https://your-project.supabase.co\"\nkey = \"your-anon-key-here\"\n""", language="toml")
+            st.error("Or set SUPABASE_URL and SUPABASE_KEY as environment variables.")
+            return None
+        from supabase import create_client
+        return create_client(supabase_url, supabase_key)
+    except Exception as e:
+        st.error(f"Failed to initialize Supabase connection: {e}")
+        return None
         # If not found in secrets, try environment variables (for local development)
         if not supabase_url or not supabase_key:
             supabase_url = os.getenv("SUPABASE_URL")
