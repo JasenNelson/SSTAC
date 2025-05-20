@@ -906,8 +906,8 @@ with st.sidebar:
                 st.session_state.file_processed_chem_list = get_chemical_options(uploaded_file)
         chemical_options = st.session_state.file_processed_chem_list or ["-- Error Reading File --"]
 
-    # Chemical search and filters (always visible after file upload)
-    if uploaded_file is not None:
+    # Chemical search and filters (visible after file upload OR Supabase fetch)
+    if uploaded_file is not None or st.session_state.chemicals_loaded:
         st.markdown("### Chemical Search and Filters")
         search_term = st.text_input(
             "1. Search Toxicology Data",
