@@ -535,15 +535,15 @@ def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=empirical_x, y=plot_data['empirical_cdf_percent'], mode='markers', name='Species Data',
-        marker=dict(color='#2E4053', size=8, symbol='circle', opacity=0.8),
+        marker=dict(color='#2196F3', size=8, symbol='circle', opacity=0.85),
         hovertext=[f"Species: {sp}<br>Conc: {x:.2g} {unit}" for sp, x in zip(plot_data['species'], empirical_x)], hoverinfo='text'
     ))
     fig.add_trace(go.Scatter(
-        x=fitted_x, y=plot_data['fitted_cdf_percent'], mode='lines', name=f'Fitted {dist_name} CDF', line=dict(color='#FFC107', dash='dash', width=2)
+        x=fitted_x, y=plot_data['fitted_cdf_percent'], mode='lines', name=f'Fitted {dist_name} CDF', line=dict(color='#FF5252', dash='dash', width=2)
     ))
     # Mark the HCp point if valid
     if hcp_x is not None and hcp_x > 0:
-        fig.add_trace(go.Scatter(x=[hcp_x], y=[p_value*100], mode='markers', marker=dict(color='#FFC107', size=10, symbol='x', opacity=0.8), name=f'HC{p_value}'))
+        fig.add_trace(go.Scatter(x=[hcp_x], y=[p_value*100], mode='markers', marker=dict(color='#FFD600', size=14, symbol='x', opacity=1), name=f'HC{p_value}'))
     # Compute axis range to include all points and HCp
     all_x = np.concatenate([empirical_x, fitted_x, [hcp_x] if hcp_x is not None and hcp_x > 0 else []])
     all_x = all_x[all_x > 0]  # Remove non-positive values for log scale
@@ -565,12 +565,12 @@ def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
         legend_title='Legend',
         legend_title_font_size=14,
         legend_font_size=12,
-        yaxis=dict(range=[0, 100], gridwidth=1, gridcolor='#E5E5EA', color='#222'),
-        xaxis=dict(gridwidth=1, gridcolor='#E5E5EA', color='#222'),
+        yaxis=dict(range=[0, 100], gridwidth=1, gridcolor='#444', color='#FFF'),
+        xaxis=dict(gridwidth=1, gridcolor='#444', color='#FFF'),
         hovermode='closest',
-        plot_bgcolor='#F7F7F7',
-        paper_bgcolor='#FFFFFF',
-        font=dict(color='#222'),
+        plot_bgcolor='#111',
+        paper_bgcolor='#000',
+        font=dict(color='#FFF'),
 
     )
     return fig
