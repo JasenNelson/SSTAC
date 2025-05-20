@@ -729,70 +729,76 @@ if supabase_conn:
                 st.error(f"Failed to fetch records from toxicology_data: {str(e)}")
                 st.exception(e)
 
-            for chem in df.itertuples(index=False):
-                if chem.chemical_name and chem.chemical_name not in seen_chemicals:
-                    # Determine chemical group based on species group
-                    species_group = chem.group if chem.group else "Unknown"
-                    chemical_group = get_chemical_group(species_group)
-                    
-                    # Track chemical groups
-                    if chemical_group not in chemical_groups:
-                        chemical_groups[chemical_group] = 0
-                    chemical_groups[chemical_group] += 1
-                    
-                    # Add chemical data
-                    chem_data.append({
-                        'id': chem.id,
-                        'chemical_name': chem.chemical_name,
-                        'cas_number': chem.cas_number,
-                        'group': chemical_group,
-                        'occurrences': 1
-                    })
-                    seen_chemicals.add(chem.chemical_name)
-                elif chem.chemical_name in seen_chemicals:
-                    # Update count for existing chemicals
-                    for item in chem_data:
-                        if item['chemical_name'] == chem.chemical_name:
-                            item['occurrences'] += 1
-                            break
-            
-            # Store in session state
-            st.session_state.chemicals_data = chem_data
-            st.session_state.chemicals_loaded = True
-            
-            # Update chemical options
-            if 'file_processed_chem_list' not in st.session_state:
-                st.session_state.file_processed_chem_list = []
-            st.session_state.file_processed_chem_list = [chem['chemical_name'] for chem in chem_data]
-            
-            st.success(f"Successfully fetched {len(chem_data)} unique chemicals from Supabase!")
-            
-            # Show chemical group distribution
-            st.write("Chemical Group Distribution:")
-            group_df = pd.DataFrame(list(chemical_groups.items()), columns=['Group', 'Count'])
-            st.bar_chart(group_df.set_index('Group'))
-            
-            # Show chemical details
-            if st.checkbox("Show chemical details", key="show_chem_details"):
-                st.write("Chemical Details:")
-                chem_df = pd.DataFrame(chem_data)
-                st.dataframe(chem_df, hide_index=True)
+            chemicals_data = st.session_state.get("chemicals_data", [])
+if chemicals_data:
+    df = pd.DataFrame(chemicals_data)
+    for chem in df.itertuples(index=False):
+        if chem.chemical_name and chem.chemical_name not in seen_chemicals:
+            # Determine chemical group based on species group
+            species_group = chem.group if chem.group else "Unknown"
+            chemical_group = get_chemical_group(species_group)
 
-        # Ensure chemical_groups is defined before use in the try-except block
-        if 'chemical_groups' not in locals():
-            chemical_groups = {}
-        try:
-            # Show chemical group distribution
-            st.write("Chemical Group Distribution:")
-            group_df = pd.DataFrame(list(chemical_groups.items()), columns=['Group', 'Count'])
-            st.bar_chart(group_df.set_index('Group'))
-        except Exception as e:
-            st.error(f"Failed to fetch chemicals: {e}")
-            st.write("Error details:")
-            st.write(f"Type: {type(e).__name__}")
-            st.write(f"Message: {str(e)}")
-            st.exception(e)  # Show full traceback
-            raise e  # Re-raise to terminate the app if needed
+            # Track chemical groups
+            if chemical_group not in chemical_groups:
+                chemical_groups[chemical_group] = 0
+            chemical_groups[chemical_group] += 1
+
+            # Add chemical data
+            chem_data.append({
+                'id': chem.id,
+                'chemical_name': chem.chemical_name,
+                'cas_number': chem.cas_number,
+                'group': chemical_group,
+                'occurrences': 1
+            })
+            seen_chemicals.add(chem.chemical_name)
+        elif chem.chemical_name in seen_chemicals:
+            # Update count for existing chemicals
+            for item in chem_data:
+                if item['chemical_name'] == chem.chemical_name:
+                    item['occurrences'] += 1
+                    break
+    # Store in session state
+    st.session_state.chemicals_data = chem_data
+    st.session_state.chemicals_loaded = True
+
+    # Update chemical options
+    if 'file_processed_chem_list' not in st.session_state:
+        st.session_state.file_processed_chem_list = []
+    st.session_state.file_processed_chem_list = [chem['chemical_name'] for chem in chem_data]
+
+    st.success(f"Successfully fetched {len(chem_data)} unique chemicals from Supabase!")
+
+    # Show chemical group distribution
+    st.write("Chemical Group Distribution:")
+    group_df = pd.DataFrame(list(chemical_groups.items()), columns=['Group', 'Count'])
+    st.bar_chart(group_df.set_index('Group'))
+
+    # Show chemical details
+    if st.checkbox("Show chemical details", key="show_chem_details"):
+        st.write("Chemical Details:")
+        chem_df = pd.DataFrame(chem_data)
+        st.dataframe(chem_df, hide_index=True)
+
+    # Ensure chemical_groups is defined before use in the try-except block
+    if 'chemical_groups' not in locals():
+        chemical_groups = {}
+    try:
+        # Show chemical group distribution
+        st.write("Chemical Group Distribution:")
+        group_df = pd.DataFrame(list(chemical_groups.items()), columns=['Group', 'Count'])
+        st.bar_chart(group_df.set_index('Group'))
+    except Exception as e:
+        st.error(f"Failed to fetch chemicals: {e}")
+        st.write("Error details:")
+        st.write(f"Type: {type(e).__name__}")
+        st.write(f"Message: {str(e)}")
+        st.exception(e)  # Show full traceback
+        raise e  # Re-raise to terminate the app if needed
+    # Show chemical group distribution
+    st.write("Chemical Group Distribution:")
+    group_df = pd.DataFrame(list(chemical_groups.items()), columns=['Group', 'Count'])
+    st.bar_chart(group_df.set_index('Group'))
 
 # Display all chemicals fetched from Supabase
 if st.session_state.chemicals_loaded and st.session_state.chemicals_data:
