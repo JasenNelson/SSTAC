@@ -619,7 +619,7 @@ def fetch_chemicals():
     """
     try:
         # Fetch chemicals from the correct table and headings
-        chemicals = supabase_conn.table("toxicology_data").select("id, test_cas, chemical_name, species_scientific_name, species_common_name, species_group, endpoint, effect, concl_measured, concl_unit, created_at, updated_at, source_url, retrieval_date, validation_errors").execute()
+        chemicals = supabase_conn.table("toxicology_data").select("id, test_cas, chemical_name, species_scientific_name, species_common_name, species_group, endpoint, effect, conc1_mean, conc1_unit, created_at, updated_at, source_url, retrieval_date, validation_errors").execute()
         
         # Check if we got any data
         if not chemicals.data:
@@ -636,9 +636,9 @@ def fetch_chemicals():
         else:
             df['group'] = 'Unknown'
         
-        # Add media classification based on units (if concl_unit exists)
-        if 'concl_unit' in df.columns:
-            df['media'] = df['concl_unit'].apply(get_media_from_unit)
+        # Add media classification based on units (if conc1_unit exists)
+        if 'conc1_unit' in df.columns:
+            df['media'] = df['conc1_unit'].apply(get_media_from_unit)
         else:
             df['media'] = 'Unknown'
         
