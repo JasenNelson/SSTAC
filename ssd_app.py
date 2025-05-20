@@ -477,15 +477,15 @@ def calculate_ssd(data, species_col, value_col, dist_name, p_value):
             hcp = mean + std * np.sqrt(2) * np.sqrt(-2 * np.log(1 - p_value))
             params = (mean, std)
         
-        return {
+        # Compose plot_data (minimal for now, can be expanded)
+        plot_data = {
             'median': median,
-            'hcp': hcp,
-            'params': params,
             'distribution': dist_name
         }
+        return hcp, params, plot_data, None
     except Exception as e:
         st.error(f"Error calculating SSD: {str(e)}")
-        return None
+        return None, None, None, str(e)
     fitted_cdf_percent = prob_range * 100
     plot_data = {
         'empirical_log_values': sorted_log_values,
