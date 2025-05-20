@@ -808,8 +808,7 @@ if supabase_conn:
             except Exception as e:
                 st.error(f"Failed to fetch records from toxicology_data: {str(e)}")
                 st.exception(e)
-yes
-    st.success(f"Successfully fetched {len(chem_data)} unique chemicals from Supabase!")
+st.success(f"Successfully fetched {len(chem_data)} unique chemicals from Supabase!")
 
 
 # Display all chemicals fetched from Supabase
