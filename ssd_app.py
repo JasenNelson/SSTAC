@@ -594,7 +594,7 @@ def initialize_supabase_connection():
             # Test the connection
             try:
                 # Try a simple query to test the connection
-                test_result = supabase_conn.table(TABLE_CHEMICALS).select("name").limit(1).execute()
+                test_result = supabase_conn.table(TABLE_CHEMICALS).select("chemical_name").limit(1).execute()
                 if len(test_result.data) > 0:
                     st.success("Successfully connected to Supabase!")
                     return supabase_conn
