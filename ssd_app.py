@@ -1086,9 +1086,15 @@ if generate_button and is_ready_to_generate: # Check readiness flag
 
         # 6. Perform SSD Calculation
         st.write(f"6. Fitting SSD using '{distribution_fit}' and calculating HC{hcp_percentile}:")
+        # Map UI label to internal value for SSD distribution
+        dist_map = {
+            "Log-Normal": "lognormal",
+            "Log-Logistic": "loglogistic"
+        }
+        ssd_dist = dist_map.get(distribution_fit, "lognormal")
         hcp_value, fit_params, plot_data_dict, error_msg = calculate_ssd(
             data=species_df, species_col=species_col, value_col='aggregated_value',
-            dist_name=distribution_fit, p_value=hcp_percentile
+            dist_name=ssd_dist, p_value=hcp_percentile
         )
         if error_msg: st.error(f"❌ Error during SSD calculation: {error_msg}"); st.stop()
         st.success("   ✓ SSD calculation successful.")
