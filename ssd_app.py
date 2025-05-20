@@ -631,7 +631,9 @@ def fetch_chemicals(search_term=None):
     """
     try:
         # Use ilike for wildcard, case-insensitive search if search_term is provided
-        query = supabase_conn.table("toxicology_data").select("id, test_cas, chemical_name, species_scientific_name, species_common_name, species_group, endpoint, effect, conc1_mean, conc1_unit, created_at, updated_at, source_url, retrieval_date, validation_errors")
+        # Only select required columns and limit the number of records to avoid timeouts
+        columns = "id, test_cas, chemical_name, species_scientific_name, species_common_name, species_group, endpoint, effect, conc1_mean, conc1_unit"
+        query = supabase_conn.table("toxicology_data").select(columns).limit(1000)
         if search_term and search_term.strip():
             query = query.ilike("chemical_name", f"%{search_term.strip()}%")
         chemicals = query.execute()
@@ -668,6 +670,13 @@ def fetch_chemicals(search_term=None):
             # Handle empty or invalid CAS numbers
             df['test_cas'] = df['test_cas'].apply(lambda x: x if x and len(x) > 0 else "")
         
+        # Populate chemical_groups from the DataFrame
+        if 'group' in df.columns:
+            chemical_groups = df['group'].value_counts().to_dict()
+        else:
+            chemical_groups = {}
+        st.session_state.chemical_groups = chemical_groups
+
         # Store in session state
         st.session_state.chemicals_data = df.to_dict('records')
         st.session_state.chemicals_loaded = True
