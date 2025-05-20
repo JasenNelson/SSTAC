@@ -694,6 +694,7 @@ def fetch_chemicals(search_term=None):
         return True
     except Exception as e:
         st.error(f"Failed to fetch records from toxicology_data: {str(e)}")
+        st.session_state.chemical_groups = chemical_groups  # Ensure always defined
         st.exception(e)
         return False
 
@@ -758,6 +759,7 @@ if supabase_conn:
 
         # Add fetch chemicals button with unique key
         chem_data = []  # Ensure chem_data is always defined
+        chemical_groups = {}  # Ensure chemical_groups is always defined
         if st.button("Fetch Toxicology Data from Supabase", key="fetch_chemicals_btn"):
             try:
                 with st.spinner("Fetching chemical list from Supabase..."):
