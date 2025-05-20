@@ -823,9 +823,9 @@ if st.session_state.chemicals_loaded:
         )
     else:
         st.info("No chemicals found matching your search.")
-        
-        if selected_chemicals:
-            # Show selected chemicals
+
+    if selected_chemicals:
+        # Show selected chemicals
             selected_df = chem_df[chem_df['chemical_name'].isin(selected_chemicals)]
             st.write("Selected Chemicals:")
             st.dataframe(selected_df, hide_index=True)
