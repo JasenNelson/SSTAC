@@ -1119,11 +1119,21 @@ if generate_button and is_ready_to_generate: # Check readiness flag
         # --- Display Results --- (Keep as is)
         with results_area:
             st.subheader("📊 Results")
-            st.metric(label=f"Hazard Concentration HC{hcp_percentile}", value=f"{hcp_value:.4g} {data_unit}")
+            if hcp_value is None:
+                st.warning("SSD value (hcp_value) is missing.")
+            else:
+                st.metric(label=f"Hazard Concentration HC{hcp_percentile}", value=f"{hcp_value:.4g} {data_unit}")
+            st.write("plot_data_dict keys:", list(plot_data_dict.keys()) if plot_data_dict else "None")
         with plot_area:
             st.subheader("📈 SSD Plot")
-            ssd_fig = create_ssd_plot(plot_data_dict, hcp_value, hcp_percentile, distribution_fit, data_unit)
-            st.plotly_chart(ssd_fig, use_container_width=True)
+            if plot_data_dict is None:
+                st.warning("SSD plot data is missing.")
+            else:
+                try:
+                    ssd_fig = create_ssd_plot(plot_data_dict, hcp_value, hcp_percentile, distribution_fit, data_unit)
+                    st.plotly_chart(ssd_fig, use_container_width=True)
+                except Exception as e:
+                    st.error(f"Error plotting SSD: {e}")
         st.subheader("Species Data Used for SSD")
         st.dataframe(species_df[[species_col, 'broad_group', 'aggregated_value']].rename(
             columns={'aggregated_value': f'Toxicity Value ({data_unit})', 'broad_group': 'Taxonomic Group'}
