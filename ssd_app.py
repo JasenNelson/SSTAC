@@ -12,9 +12,9 @@ import os
 # Load environment variables from .env file
 load_dotenv()
 
-
 # Set page configuration first
 st.set_page_config(layout="wide")
+
 
 def initialize_supabase_connection():
     """Initialize and test Supabase connection with proper error handling.
