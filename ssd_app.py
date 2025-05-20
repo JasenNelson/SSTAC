@@ -79,25 +79,18 @@ try:
         st.success("Successfully connected to Supabase!")
         st.write("Sample data from 'toxicology_data':", test_query.data)
     else:
-        st.error("Unable to access any tables in the database")
+        st.error("Unable to access any data from the 'toxicology_data' table.")
         st.error("Please check:")
         st.error("1. The anon key has the correct permissions")
         st.error("2. RLS policies are correctly configured")
-        raise Exception("No tables accessible with current credentials")
+        st.error("3. The 'toxicology_data' table exists and is not empty.")
+        raise Exception("No data accessible with current credentials")
 
 except Exception as e:
-    # If the RPC call fails, try a simpler query
-    st.info("Testing connection with simpler query...")
-    try:
-        test_query = supabase_conn.table("auth.users").select("id").limit(1).execute()
-        if test_query.data:
-            st.success("Successfully connected to Supabase!")
-            st.warning("Note: The 'auth.users' table exists, but the 'chemicals' table may not. Please check your schema.")
-        else:
-            st.error("Could not access any user data. Check your Supabase permissions and schema.")
-    except Exception as e:
-        st.error(f"Error testing connection: {str(e)}")
-        raise e
+    st.error(f"Error testing connection to Supabase: {str(e)}")
+    st.error("Please verify your Supabase credentials, permissions, and table existence.")
+    import traceback
+    st.error(traceback.format_exc())
 
 
 except Exception as e:
