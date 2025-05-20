@@ -808,7 +808,7 @@ if supabase_conn:
             except Exception as e:
                 st.error(f"Failed to fetch records from toxicology_data: {str(e)}")
                 st.exception(e)
-
+yes
     st.success(f"Successfully fetched {len(chem_data)} unique chemicals from Supabase!")
 
 
@@ -953,8 +953,9 @@ with st.sidebar:
             key=f"selected_chemicals{key_suffix}",
             help="Select multiple chemicals by holding Ctrl/Cmd"
         )
-        # Show a warning if no valid chemical names are found
-        if not current_chemical_options or current_chemical_options[0].startswith('--'):
+        # Show a warning only if there are truly no valid chemical names
+        valid_chem_names = [opt for opt in current_chemical_options if not opt.startswith('--')]
+        if not valid_chem_names:
             st.warning("No valid chemical names found. Please check your file format or Supabase data.")
 
         endpoint_type = st.radio(
