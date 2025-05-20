@@ -535,7 +535,7 @@ def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=empirical_x, y=plot_data['empirical_cdf_percent'], mode='markers', name='Species Data',
-        marker=dict(color='#2E4053', size=8, symbol='circle', opacity=0.8),
+        marker=dict(color='#1f2937', size=10, symbol='circle', opacity=1.0),
         hovertext=[f"Species: {sp}<br>Conc: {x:.2g} {unit}" for sp, x in zip(plot_data['species'], empirical_x)], hoverinfo='text'
     ))
     fig.add_trace(go.Scatter(
@@ -568,8 +568,7 @@ def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
         yaxis=dict(range=[0, 100], gridwidth=1, gridcolor='#E5E5EA'),
         xaxis=dict(gridwidth=1, gridcolor='#E5E5EA'),
         hovermode='closest',
-        plot_bgcolor='#F7F7F7',
-        paper_bgcolor='#FFFFFF'
+
     )
     return fig
 
