@@ -853,8 +853,8 @@ if st.session_state.chemicals_loaded:
                         mime="text/csv",
                         key="download_complete_csv_1"
                     )
-    else:
-        st.info("No chemicals found matching your filters.")
+else:
+    st.info("No chemicals found matching your filters.")
 
 # Add chemical count 
 if st.session_state.chemicals_loaded:
