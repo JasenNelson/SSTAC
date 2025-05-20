@@ -651,6 +651,11 @@ def fetch_chemicals(search_term=None):
         # Convert to DataFrame
         df = pd.DataFrame(chemicals.data)
         st.write('Fetched columns:', df.columns.tolist())  # Show columns for verification
+
+        # Display grouped summary by chemical_name
+        grouped = df.groupby('chemical_name').size().reset_index(name='count')
+        st.write('Grouped Results by Chemical Name:')
+        st.dataframe(grouped)
         
         # Add chemical group column
         if 'chemical_name' in df.columns:
@@ -697,8 +702,16 @@ if supabase_conn:
     with st.expander("Chemical Management", expanded=False):
         st.write("Manage your chemical database:")
         
-        # Add search box
-        search_term = st.text_input("Search Toxicology Data", key="chem_search")
+        # Add search box with guidance for prefix search
+        search_term = st.text_input(
+            "Search Toxicology Data",
+            key="chem_search",
+            help="Type the beginning of a chemical name (e.g., 'lead') for best results. Broad or empty searches are not supported."
+        )
+        # Input validation: warn if search term is too short
+        if search_term and len(search_term.strip()) < 2:
+            st.warning("Please enter at least 2 characters to search by the beginning of the chemical name.")
+            search_term = None  # Prevent fetch_chemicals from running
         
         # Add group filter
         group_options = st.multiselect(
