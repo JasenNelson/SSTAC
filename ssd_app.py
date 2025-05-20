@@ -176,21 +176,17 @@ except Exception as e:
     import traceback
     st.error(traceback.format_exc())
 
-supabase_conn = None
+# Initialize Supabase connection
+supabase_conn = initialize_supabase_connection()
+if supabase_conn is None:
+    st.error("Supabase connection could not be established. Please check your credentials and setup.")
+    st.stop()
 
 # Initialize session state
 if 'chemicals_loaded' not in st.session_state:
     st.session_state.chemicals_loaded = False
+if 'chemicals_data' not in st.session_state:
     st.session_state.chemicals_data = []
-
-# Initialize Supabase connection
-supabase_conn = initialize_supabase_connection()
-
-# If connection failed, don't proceed with the rest of the app
-if supabase_conn is None:
-    st.stop()
-    st.warning("Supabase connection failed. Some features may not be available.")
-    raise SystemExit("Supabase connection not available")
 
 # Move the rest of the configuration section back to its original position
 ECOTOX_EXPECTED_COLS = {
