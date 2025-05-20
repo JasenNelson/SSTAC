@@ -468,29 +468,26 @@ def calculate_ssd(data, species_col, value_col, dist_name, p_value):
             # Calculate HCP using inverse CDF
             hcp = mean + std * np.sqrt(2) * np.sqrt(-2 * np.log(1 - p_value))
             params = (mean, std)
-        else:  # weibull
-            # For Weibull, we'll use a simple approximation
-            mean = np.mean(data[value_col])
-            std = np.std(data[value_col])
-            median = mean
-            # Calculate HCP using inverse CDF approximation
-            hcp = mean + std * np.sqrt(2) * np.sqrt(-2 * np.log(1 - p_value))
+        else:  # normal or weibull
+            # Fit in log space for alignment with plotting
+            log_values = np.log(data[value_col])
+            mean = np.mean(log_values)
+            std = np.std(log_values)
+            median = np.exp(mean)
+            # Calculate HCP using inverse CDF in log space
+            hcp = np.exp(mean + std * np.sqrt(2) * np.sqrt(-2 * np.log(1 - p_value)))
             params = (mean, std)
         
         # Compose plot_data for SSD plotting
         # Empirical CDF (convert to log10 scale for plotting)
-        log_values = np.log(data[value_col]) if dist_name == 'lognormal' else data[value_col]
+        log_values = np.log(data[value_col])
         log10_values = log_values / np.log(10)
         sorted_log10_values = np.sort(log10_values)
         empirical_cdf = np.arange(1, len(sorted_log10_values) + 1) / (len(sorted_log10_values) + 1)
         # Fitted CDF (convert to log10 as well)
         prob_range = np.linspace(0.001, 0.999, 100)
-        if dist_name == 'lognormal':
-            fitted_log_values = np.exp(mean + std * np.sqrt(2) * np.sqrt(-2 * np.log(1 - prob_range)))
-            fitted_log10_values = np.log10(fitted_log_values)
-        else:
-            fitted_log_values = mean + std * np.sqrt(2) * np.sqrt(-2 * np.log(1 - prob_range))
-            fitted_log10_values = fitted_log_values / np.log(10)
+        fitted_log_values = mean + std * np.sqrt(2) * np.sqrt(-2 * np.log(1 - prob_range))
+        fitted_log10_values = fitted_log_values / np.log(10)
         fitted_cdf_percent = prob_range * 100
         log_hcp = np.log(hcp) if hcp > 0 else float('nan')
         log10_hcp = log_hcp / np.log(10) if hcp > 0 else float('nan')
