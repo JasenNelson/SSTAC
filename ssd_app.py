@@ -801,18 +801,16 @@ if supabase_conn:
                 st.error(f"Failed to fetch chemicals: {str(e)}")
                 st.exception(e)
 
-{{ ... }}
             for chem in df.itertuples(index=False):
                 if chem.name and chem.name not in seen_chemicals:
                     # Determine chemical group based on species group
                     species_group = chem.group if chem.group else "Unknown"
                     chemical_group = get_chemical_group(species_group)
                     
-{{ ... }}
                     # Track chemical groups
-                if chemical_group not in chemical_groups:
-                    chemical_groups[chemical_group] = 0
-                chemical_groups[chemical_group] += 1
+                    if chemical_group not in chemical_groups:
+                        chemical_groups[chemical_group] = 0
+                    chemical_groups[chemical_group] += 1
                     
                     # Add chemical data
                     chem_data.append({
@@ -851,7 +849,12 @@ if supabase_conn:
                 st.write("Chemical Details:")
                 chem_df = pd.DataFrame(chem_data)
                 st.dataframe(chem_df, hide_index=True)
-                
+
+        try:
+            # Show chemical group distribution
+            st.write("Chemical Group Distribution:")
+            group_df = pd.DataFrame(list(chemical_groups.items()), columns=['Group', 'Count'])
+            st.bar_chart(group_df.set_index('Group'))
         except Exception as e:
             st.error(f"Failed to fetch chemicals: {e}")
             st.write("Error details:")
