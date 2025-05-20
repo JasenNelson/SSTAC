@@ -1131,7 +1131,7 @@ if generate_button and is_ready_to_generate: # Check readiness flag
                 st.warning("SSD value (hcp_value) is missing.")
             else:
                 st.metric(label=f"Hazard Concentration HC{hcp_percentile}", value=f"{hcp_value:.4g} {data_unit}")
-            st.write("plot_data_dict keys:", list(plot_data_dict.keys()) if plot_data_dict else "None")
+
         with plot_area:
             st.subheader("📈 SSD Plot")
             if plot_data_dict is None:
