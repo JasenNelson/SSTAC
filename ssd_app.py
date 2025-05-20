@@ -997,14 +997,15 @@ with st.sidebar:
         )
     else:
         st.info("Upload a file or fetch chemicals from the database to begin.")
-        distribution_fit = st.selectbox(
-            "7. Distribution for Fitting", ('Log-Normal', 'Log-Logistic'), index=0,
-            help="Statistical distribution to fit to the log-transformed data."
-        )
-        hcp_percentile = st.number_input(
-            "8. Hazard Concentration (HCp) Percentile", min_value=0.1, max_value=99.9, value=5.0, step=0.1, format="%.1f",
-            help="The percentile 'p' for which to calculate the HCp (e.g., 5 for HC5)."
-        )
+    # Always show these options so distribution_fit and hcp_percentile are defined
+    distribution_fit = st.selectbox(
+        "7. Distribution for Fitting", ('Log-Normal', 'Log-Logistic'), index=0,
+        help="Statistical distribution to fit to the log-transformed data."
+    )
+    hcp_percentile = st.number_input(
+        "8. Hazard Concentration (HCp) Percentile", min_value=0.1, max_value=99.9, value=5.0, step=0.1, format="%.1f",
+        help="The percentile 'p' for which to calculate the HCp (e.g., 5 for HC5)."
+    )
 
     # *** MODIFIED: Button enabling logic for multi-select ***
     is_ready_to_generate = (
