@@ -451,6 +451,17 @@ def get_distribution(dist_name):
 
 def calculate_ssd(data, species_col, value_col, dist_name, p_value):
     """Calculates SSD parameters and HCp using numpy."""
+    # Diagnostic output for debugging
+    st.write("SSD calculation input summary:")
+    st.write(data[value_col].describe())
+    st.write("Min value:", data[value_col].min())
+    # Check for positive concentrations
+    valid_data = data[data[value_col] > 0].copy()
+    if valid_data.empty:
+        return None, None, None, "No positive concentrations for SSD calculation."
+    # Check p_value
+    if not (0 < p_value < 1):
+        return None, None, None, f"p_value must be between 0 and 1 (got {p_value})."
     try:
         # Calculate parameters using numpy
         if dist_name == 'lognormal':
