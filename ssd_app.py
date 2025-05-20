@@ -538,6 +538,17 @@ def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
     fig.add_vline(x=plot_data['log_hcp'], line=dict(color='grey', dash='dot'), name=f'HC{p_value}')
     # Mark the HCp point
     fig.add_trace(go.Scatter(x=[plot_data['log_hcp']], y=[p_value*100], mode='markers', marker=dict(color='red', size=10, symbol='x'), name=f'HC{p_value}'))
+    # Ensure x-axis includes all data and HCp marker
+    import numpy as np
+    all_x = np.concatenate([
+        np.array(plot_data['empirical_log_values']),
+        np.array(plot_data['fitted_log_values']),
+        np.array([plot_data['log_hcp']])
+    ])
+    xmin = np.nanmin(all_x)
+    xmax = np.nanmax(all_x)
+    xmargin = 0.1 * (xmax - xmin) if xmax > xmin else 1
+    fig.update_xaxes(range=[xmin - xmargin, xmax + xmargin])
     fig.update_layout(
         title='Species Sensitivity Distribution (SSD)', xaxis_title=f'Concentration (Log10 {unit})', yaxis_title='Percent of Species Affected (%)',
         legend_title='Legend', xaxis=dict(tickformat=".2f"), yaxis=dict(range=[0, 100]), hovermode='closest'
