@@ -470,15 +470,15 @@ def calculate_ssd(data, species_col, value_col, dist_name, p_value):
             mean = np.mean(log_data)
             std = np.std(log_data)
             median = np.exp(mean)
-            # Calculate HCP using inverse CDF
-            hcp = np.exp(mean + std * np.sqrt(2) * np.sqrt(-2 * np.log(1 - p_value)))
+            # Calculate HCP using inverse CDF (correct lognormal quantile)
+            hcp = np.exp(mean + std * norm.ppf(p_value))
             params = (mean, std)
         elif dist_name == 'normal':
             mean = np.mean(data[value_col])
             std = np.std(data[value_col])
             median = mean
-            # Calculate HCP using inverse CDF
-            hcp = mean + std * np.sqrt(2) * np.sqrt(-2 * np.log(1 - p_value))
+            # Calculate HCP using inverse CDF (correct normal quantile)
+            hcp = mean + std * norm.ppf(p_value)
             params = (mean, std)
         else:  # normal or weibull
             # Fit in log space for alignment with plotting
@@ -486,8 +486,8 @@ def calculate_ssd(data, species_col, value_col, dist_name, p_value):
             mean = np.mean(log_values)
             std = np.std(log_values)
             median = np.exp(mean)
-            # Calculate HCP using inverse CDF in log space
-            hcp = np.exp(mean + std * np.sqrt(2) * np.sqrt(-2 * np.log(1 - p_value)))
+            # Calculate HCP using inverse CDF in log space (for loglogistic/weibull, fallback to lognormal formula)
+            hcp = np.exp(mean + std * norm.ppf(p_value))
             params = (mean, std)
         
         # Compose plot_data for SSD plotting
@@ -566,7 +566,9 @@ def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
         legend_title_font_size=14,
         legend_font_size=12,
         yaxis=dict(range=[0, 100], gridwidth=1, gridcolor='#444', color='#FFF'),
-        xaxis=dict(gridwidth=1, gridcolor='#444', color='#FFF'),
+        xaxis=dict(gridwidth=1, gridcolor='#444', color='#FFF',
+                   tickvals=[0.01, 0.1, 1, 10, 100, 1000, 10000],
+                   ticktext=['0.01', '0.1', '1', '10', '100', '1000', '10000']),
         hovermode='closest',
         plot_bgcolor='#111',
         paper_bgcolor='#000',
