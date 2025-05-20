@@ -7,6 +7,7 @@ TABLE_CHEMICALS = "toxicology_data"
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+from scipy.stats import norm
 from io import StringIO
 import supabase
 from st_supabase_connection import SupabaseConnection
@@ -484,11 +485,16 @@ def calculate_ssd(data, species_col, value_col, dist_name, p_value):
         log10_values = log_values / np.log(10)
         sorted_log10_values = np.sort(log10_values)
         empirical_cdf = np.arange(1, len(sorted_log10_values) + 1) / (len(sorted_log10_values) + 1)
-        # Fitted CDF (convert to log10 as well)
-        prob_range = np.linspace(0.001, 0.999, 100)
-        fitted_log_values = mean + std * np.sqrt(2) * np.sqrt(-2 * np.log(1 - prob_range))
-        fitted_log10_values = fitted_log_values / np.log(10)
-        fitted_cdf_percent = prob_range * 100
+        # Fitted CDF (use norm.cdf for lognormal fit)
+        # Generate log10 x values over the observed range
+        min_x = np.floor(sorted_log10_values.min())
+        max_x = np.ceil(sorted_log10_values.max())
+        fitted_log10_values = np.linspace(min_x, max_x, 200)
+        # Convert log10 x to ln x for the CDF
+        fitted_ln_values = fitted_log10_values * np.log(10)
+        # CDF for lognormal: use normal CDF in ln space
+        fitted_cdf = norm.cdf(fitted_ln_values, loc=mean, scale=std)
+        fitted_cdf_percent = fitted_cdf * 100
         log_hcp = np.log(hcp) if hcp > 0 else float('nan')
         log10_hcp = log_hcp / np.log(10) if hcp > 0 else float('nan')
         plot_data = {
@@ -528,9 +534,10 @@ def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
     fig.add_trace(go.Scatter(
         x=plot_data['fitted_log_values'], y=plot_data['fitted_cdf_percent'], mode='lines', name=f'Fitted {dist_name} CDF', line=dict(color='red', dash='dash')
     ))
-    fig.add_hline(y=p_value, line=dict(color='grey', dash='dot'), name=f'{p_value}% Level')
+    # Draw vertical line for HCp
     fig.add_vline(x=plot_data['log_hcp'], line=dict(color='grey', dash='dot'), name=f'HC{p_value}')
-    fig.add_trace(go.Scatter(x=[plot_data['log_hcp']], y=[p_value], mode='markers', marker=dict(color='red', size=10, symbol='x'), name=f'HC{p_value}'))
+    # Mark the HCp point
+    fig.add_trace(go.Scatter(x=[plot_data['log_hcp']], y=[p_value*100], mode='markers', marker=dict(color='red', size=10, symbol='x'), name=f'HC{p_value}'))
     fig.update_layout(
         title='Species Sensitivity Distribution (SSD)', xaxis_title=f'Concentration (Log10 {unit})', yaxis_title='Percent of Species Affected (%)',
         legend_title='Legend', xaxis=dict(tickformat=".2f"), yaxis=dict(range=[0, 100]), hovermode='closest'
