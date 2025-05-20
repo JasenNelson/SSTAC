@@ -629,8 +629,7 @@ def fetch_chemicals(search_term=None):
         return False
     """Fetch chemicals from Supabase and process them.
     
-    Returns:
-        bool: True if chemicals were fetched successfully, False otherwise
+
     """
     try:
         # Use ilike for wildcard, case-insensitive search if search_term is provided
