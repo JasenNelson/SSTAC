@@ -791,6 +791,12 @@ if supabase_conn:
             st.exception(e)  # Show full traceback
             raise e  # Re-raise to terminate the app if needed
 
+# Display all chemicals fetched from Supabase
+if st.session_state.chemicals_loaded and st.session_state.chemicals_data:
+    st.write("### Chemicals Fetched from Supabase")
+    chem_df = pd.DataFrame(st.session_state.chemicals_data)
+    st.dataframe(chem_df, hide_index=True)
+
 # Show search results
 if st.session_state.chemicals_loaded:
     # Filter by search term
