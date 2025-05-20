@@ -907,7 +907,19 @@ with st.sidebar:
         chemical_options = st.session_state.file_processed_chem_list or ["-- Error Reading File --"]
 
     # Chemical search and filters (visible after file upload OR Supabase fetch)
+    # Only show one source of chemical options at a time to avoid duplicate widget keys
+    if uploaded_file is not None:
+        key_suffix = '_file'
+        current_chemical_options = chemical_options
+    elif st.session_state.chemicals_loaded:
+        key_suffix = '_supabase'
+        current_chemical_options = [chem['chemical_name'] for chem in st.session_state.get('chemicals_data', [])] or ["-- No Chemicals Loaded --"]
+    else:
+        key_suffix = ''
+        current_chemical_options = ["-- Upload File First --"]
+
     if uploaded_file is not None or st.session_state.chemicals_loaded:
+
         st.markdown("### Chemical Search and Filters")
         if uploaded_file is not None:
             key_suffix = '_file'
@@ -935,25 +947,15 @@ with st.sidebar:
             key=f"media_filter{key_suffix}",
             help="Select media types to filter the toxicology data based on their measurement units"
         )
-        chemical_options = [chem['chemical_name'] for chem in st.session_state.get('chemicals_data', [])] if st.session_state.get('chemicals_data') else st.session_state.file_processed_chem_list or ["-- Error Reading File --"]
         selected_chemicals = st.multiselect(
             "4. Select Chemicals",
-            options=chemical_options,
+            options=current_chemical_options,
             key=f"selected_chemicals{key_suffix}",
             help="Select multiple chemicals by holding Ctrl/Cmd"
         )
-
-    if uploaded_file is not None:
-        selected_chemicals = st.multiselect(
-            "2. Select Chemical Name(s)",
-            options=chemical_options,
-            default=[],
-            key='selected_chemicals',
-            disabled=(chemical_options[0].startswith('--')),  # Disable if no valid options
-            help="Select one or more chemicals from the list derived from your uploaded file."
-        )
-
-        st.subheader("SSD Parameters")
+        # Show a warning if no valid chemical names are found
+        if not current_chemical_options or current_chemical_options[0].startswith('--'):
+            st.warning("No valid chemical names found. Please check your file format or Supabase data.")
 
         endpoint_type = st.radio(
             "3. Endpoint Type", ('Acute (LC50, EC50)', 'Chronic (NOEC, LOEC, EC10)'), index=0,
