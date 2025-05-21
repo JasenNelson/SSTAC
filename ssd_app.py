@@ -874,6 +874,9 @@ if 'file_processed_chem_list' not in st.session_state:
     st.session_state.file_processed_chem_list = None
 
 # --- Sidebar for Inputs ---
+# Ensure generate_button and is_ready_to_generate are always defined
+is_ready_to_generate = False
+generate_button = False
 # --- Sidebar: Single source of truth for file upload and chemical selection ---
 with st.sidebar:
     uploaded_file = st.file_uploader("Import CSV or TXT", type=["csv", "txt"], help="Upload your chemical data file.", key="file_upload")
