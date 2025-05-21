@@ -901,14 +901,24 @@ with st.sidebar:
                                    key="file_uploader")
     
     # Store the uploaded file state
-    if uploaded_file is not None:
-        st.session_state.file_uploaded = True
-        st.session_state.file_name = uploaded_file.name
-        st.session_state.file_object = uploaded_file  # Store the file object
-    else:
+    if 'file_uploaded' not in st.session_state:
         st.session_state.file_uploaded = False
         st.session_state.file_name = None
         st.session_state.file_object = None
+    
+    # Update state based on current file uploader
+    if uploaded_file is not None:
+        if not st.session_state.file_uploaded or st.session_state.file_name != uploaded_file.name:
+            st.session_state.file_uploaded = True
+            st.session_state.file_name = uploaded_file.name
+            st.session_state.file_object = uploaded_file  # Store the file object
+            st.session_state.file_processed_chem_list = None  # Reset processed list on new file
+    elif st.session_state.file_uploaded:
+        # Only clear if we had a file before
+        st.session_state.file_uploaded = False
+        st.session_state.file_name = None
+        st.session_state.file_object = None
+        st.session_state.file_processed_chem_list = None
     
     # Handle file upload or database selection
     if st.session_state.get('file_uploaded', False):
@@ -969,12 +979,13 @@ with st.sidebar:
         else:
             selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
     
-    # Handle file upload state
+    # Show file info and remove button if a file is uploaded
     if st.session_state.get('file_uploaded', False):
         st.info(f"File uploaded: {st.session_state.file_name}")
-        if st.button("Remove file"):
+        if st.button("Remove file", key="remove_file_btn"):
             st.session_state.file_uploaded = False
             st.session_state.file_name = None
+            st.session_state.file_object = None
             st.session_state.file_processed_chem_list = None
             st.rerun()
     
