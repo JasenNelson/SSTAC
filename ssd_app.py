@@ -953,22 +953,22 @@ with st.sidebar:
             st.warning("No valid chemical names found. Please check your file format.")
         endpoint_type = st.radio(
             "Endpoint Type", ('Acute (LC50, EC50)', 'Chronic (NOEC, LOEC, EC10)'), index=0,
-            key=f"endpoint_type{key_suffix}",
+            key="downstream_endpoint_type",
             help="Select the general type of endpoint to include."
         )
         min_species = st.number_input(
             "Minimum Number of Species", min_value=3, value=5, step=1,
-            key=f"min_species{key_suffix}",
+            key="downstream_min_species",
             help="Minimum unique species required after filtering."
         )
         required_taxa_broad = st.multiselect(
             "Required Taxonomic Groups", options=list(TAXONOMIC_MAPPING.keys()), default=list(TAXONOMIC_MAPPING.keys())[:3],
-            key=f"required_taxa_broad{key_suffix}",
+            key="downstream_required_taxa_broad",
             help="Select the broad taxonomic groups that *must* be represented."
         )
         data_handling = st.radio(
             "Handle Multiple Values per Species", ('Use Geometric Mean', 'Use Most Sensitive (Minimum Value)'), index=0,
-            key=f"data_handling{key_suffix}",
+            key="downstream_data_handling",
             help="How to aggregate multiple data points for the same species."
         )
     else:
