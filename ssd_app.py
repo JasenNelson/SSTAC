@@ -879,6 +879,7 @@ is_ready_to_generate = False
 generate_button = False
 # --- Sidebar: Single source of truth for file upload and chemical selection ---
 selected_chemicals = []  # Always define before use
+current_chemical_options = []  # Always define before use
 with st.sidebar:
     uploaded_file = st.file_uploader("Import CSV or TXT", type=["csv", "txt"], help="Upload your chemical data file.", key="file_upload")
     st.markdown("---")
@@ -894,6 +895,17 @@ with st.sidebar:
         st.info("You have uploaded a file. The chemical selection and options below use only your uploaded data. To use the database, remove the file.")
         key_suffix = '_file'
         current_chemical_options = chemical_options
+    else:
+        # --- DATABASE WORKFLOW: No file uploaded ---
+        chem_df = pd.DataFrame(st.session_state.get('chemicals_data', []))
+        if not chem_df.empty and 'chemical_name' in chem_df.columns:
+            raw_chem_options = chem_df['chemical_name'].dropna().astype(str).str.strip().unique().tolist()
+            if raw_chem_options:
+                current_chemical_options = ["Select All"] + raw_chem_options
+            else:
+                current_chemical_options = ["-- No Chemical Names Found --"]
+        else:
+            current_chemical_options = ["-- No Chemical Names Found --"]
         selected_chemicals = st.multiselect(
             "Select Chemicals from File",
             options=current_chemical_options,
