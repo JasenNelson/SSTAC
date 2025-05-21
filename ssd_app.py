@@ -959,38 +959,38 @@ with st.sidebar:
         # --- FILE UPLOADED: Only show file-based workflow ---
         st.markdown("#### Chemical Selection (From Uploaded File)")
         st.info("You have uploaded a file. The chemical selection and options below use only your uploaded data. To use the database, remove the file.")
-selected_chemicals = st.multiselect(
-    "Select Chemicals from File",
-    options=current_chemical_options,
-    key=f"selected_chemicals{key_suffix}",
-    help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
-)
-        # Filter out the placeholder
-        selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
-        valid_chem_names = [opt for opt in current_chemical_options if not opt.startswith('--') and opt.strip()]
-        if len(valid_chem_names) == 0:
-            st.warning("No valid chemical names found. Please check your file format.")
-        endpoint_type = st.radio(
-            "Endpoint Type", ('Acute (LC50, EC50)', 'Chronic (NOEC, LOEC, EC10)'), index=0,
-            key=f"endpoint_type{key_suffix}",
-            help="Select the general type of endpoint to include."
-        )
-        min_species = st.number_input(
-            "Minimum Number of Species", min_value=3, value=5, step=1,
-            key=f"min_species{key_suffix}",
-            help="Minimum unique species required after filtering."
-        )
-        required_taxa_broad = st.multiselect(
-            "Required Taxonomic Groups", options=list(TAXONOMIC_MAPPING.keys()), default=list(TAXONOMIC_MAPPING.keys())[:3],
-            key=f"required_taxa_broad{key_suffix}",
-            help="Select the broad taxonomic groups that *must* be represented."
-        )
-        data_handling = st.radio(
-            "Handle Multiple Values per Species", ('Use Geometric Mean', 'Use Most Sensitive (Minimum Value)'), index=0,
-            key=f"data_handling{key_suffix}",
-            help="How to aggregate multiple data points for the same species."
-        )
-    elif st.session_state.chemicals_loaded:
+            selected_chemicals = st.multiselect(
+                "Select Chemicals from File",
+                options=current_chemical_options,
+                key=f"selected_chemicals{key_suffix}",
+                help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
+            )
+            # Filter out the placeholder
+            selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
+            valid_chem_names = [opt for opt in current_chemical_options if not opt.startswith('--') and opt.strip()]
+            if len(valid_chem_names) == 0:
+                st.warning("No valid chemical names found. Please check your file format.")
+            endpoint_type = st.radio(
+                "Endpoint Type", ('Acute (LC50, EC50)', 'Chronic (NOEC, LOEC, EC10)'), index=0,
+                key=f"endpoint_type{key_suffix}",
+                help="Select the general type of endpoint to include."
+            )
+            min_species = st.number_input(
+                "Minimum Number of Species", min_value=3, value=5, step=1,
+                key=f"min_species{key_suffix}",
+                help="Minimum unique species required after filtering."
+            )
+            required_taxa_broad = st.multiselect(
+                "Required Taxonomic Groups", options=list(TAXONOMIC_MAPPING.keys()), default=list(TAXONOMIC_MAPPING.keys())[:3],
+                key=f"required_taxa_broad{key_suffix}",
+                help="Select the broad taxonomic groups that *must* be represented."
+            )
+            data_handling = st.radio(
+                "Handle Multiple Values per Species", ('Use Geometric Mean', 'Use Most Sensitive (Minimum Value)'), index=0,
+                key=f"data_handling{key_suffix}",
+                help="How to aggregate multiple data points for the same species."
+            )
+        elif st.session_state.chemicals_loaded:
         # --- NO FILE: Database workflow ---
         st.markdown("#### Chemical Search and Filters (From Database)")
         st.info("No file uploaded. The options below let you search and filter chemicals from the central database.")
@@ -1049,11 +1049,7 @@ selected_chemicals = st.multiselect(
 # End of sidebar block
 
 # All downstream logic should use the sidebar's uploaded_file, chemical_options, and selected_chemicals
-with st.sidebar:
-    uploaded_file = st.file_uploader("Import CSV or TXT", type=["csv", "txt"], help="Upload your chemical data file.", key="file_uploader_unique")
-    st.markdown("---")
-    st.markdown("### Chemical Management")
-    if uploaded_file is not None:
+
         if uploaded_file != st.session_state.get('last_uploaded_file', None) or st.session_state.file_processed_chem_list is None:
             st.session_state.last_uploaded_file = uploaded_file
             with st.spinner("Reading chemical list..."):
