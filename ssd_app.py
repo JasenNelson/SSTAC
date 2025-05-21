@@ -1012,7 +1012,7 @@ Upload your **processed** ecotoxicity data file (e.g., a `.csv` containing the r
 `endpoint`, `effect`, `conc1_mean`, `conc1_unit`). Select the chemical from the dropdown and
 configure parameters to generate the SSD.
 """)
-        # Always show these options so distribution_fit and hcp_percentile are defined
+        # Only show distribution_fit and hcp_percentile here
         distribution_fit = st.selectbox(
             "Distribution for Fitting", ('Log-Normal', 'Log-Logistic'), index=0,
             help="Statistical distribution to fit to the log-transformed data."
@@ -1022,20 +1022,6 @@ configure parameters to generate the SSD.
             help="The percentile 'p' for which to calculate the HCp (e.g., 5 for HC5)."
         )
 
-    # *** MODIFIED: Button enabling logic for multi-select ***
-if uploaded_file is not None:
-    is_ready_to_generate = (
-        uploaded_file is not None and
-        selected_chemicals and
-        all([c not in (None, "-- Upload File First --", "-- Error Reading File --") for c in selected_chemicals])
-    )
-    generate_button = st.button("🚀 Generate SSD", key="generate_ssd_file", disabled=(not is_ready_to_generate))
-else:
-    is_ready_to_generate = (
-        selected_chemicals and
-        all([c not in (None, "-- Upload File First --", "-- Error Reading File --") for c in selected_chemicals])
-    )
-    generate_button = st.button("🚀 Generate SSD", key="generate_ssd_supabase", disabled=(not is_ready_to_generate))
 
 # --- Main Area for Processing and Output ---
 results_area = st.container()
