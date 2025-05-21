@@ -1223,4 +1223,4 @@ elif generate_button and not is_ready_to_generate:
     st.warning("⚠️ Please ensure a file is uploaded and a chemical is selected from the dropdown.")
 
 else:
-    st.info("Upload a file using the sidebar to populate the chemical list and enable analysis.")
+    pass
