@@ -974,36 +974,6 @@ with st.sidebar:
         is_ready_to_generate = (
             uploaded_file is not None and
             selected_chemicals and
-            all([c not in (None, "-- Upload File First --", "-- Error Reading File --") for c in selected_chemicals])
-        )
-        generate_button = st.button("🚀 Generate SSD", disabled=(not is_ready_to_generate))
-
-# --- NO FILE: Always show Supabase search/filter/fetch UI ---
-st.markdown("#### Chemical Search and Filters (From Database)")
-st.info("No file uploaded. The options below let you search and filter chemicals from the central database.")
-key_suffix = '_supabase'
-search_term = st.text_input(
-    "Search Toxicology Data",
-    key=f"chem_search{key_suffix}",
-    help="You can now search for any part of a chemical name (e.g., 'ace' will match 'Acetone'). Enter at least 3 characters."
-)
-if search_term and len(search_term.strip()) < 3:
-    st.warning("Please enter at least 3 characters to search any part of the chemical name.")
-    search_term = None
-# Fetch button directly under search
-if st.button("Fetch Toxicology Data from Supabase", key="fetch_chemicals_btn_sidebar"):
-    try:
-        with st.spinner("Fetching chemical list from Supabase..."):
-            if fetch_chemicals(search_term=search_term):
-                st.success("Successfully fetched chemicals!")
-    except Exception as e:
-        st.error(f"Failed to fetch records from toxicology_data: {str(e)}")
-        st.exception(e)
-group_options = st.multiselect(
-    "Filter by Group",
-    options=["All"] + sorted(set([chem.get('group', 'Unknown') for chem in st.session_state.get('chemicals_data', [])])),
-    default=["All"],
-    key=f"group_filter{key_suffix}",
     help="Select chemical groups to filter the search results"
 )
 media_options = st.multiselect(
