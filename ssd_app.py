@@ -894,14 +894,25 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### Chemical Management")
     
-    # Get file from session state if it exists
-    uploaded_file = st.session_state.get('file_upload')  # Get from session state to maintain state
+    # File upload section - moved to the top of the management section
+    st.markdown("#### Import Data")
+    uploaded_file = st.file_uploader("Upload CSV or TXT file", type=["csv", "txt"], 
+                                   help="Upload your chemical data file.", 
+                                   key="file_uploader")
+    
+    # Store the uploaded file state
+    if uploaded_file is not None:
+        st.session_state.file_uploaded = True
+        st.session_state.file_name = uploaded_file.name
+    else:
+        st.session_state.file_uploaded = False
+        st.session_state.file_name = None
     
     # Handle file upload or database selection
-    if uploaded_file is not None:
+    if st.session_state.get('file_uploaded', False):
         key_suffix = '_file'
-        if uploaded_file != st.session_state.get('last_uploaded_file', None) or st.session_state.file_processed_chem_list is None:
-            st.session_state.last_uploaded_file = uploaded_file
+        if st.session_state.get('last_uploaded_file') != st.session_state.file_name or st.session_state.file_processed_chem_list is None:
+            st.session_state.last_uploaded_file = st.session_state.file_name
             with st.spinner("Reading chemical list..."):
                 st.session_state.file_processed_chem_list = get_chemical_options(uploaded_file)
         chemical_options = st.session_state.file_processed_chem_list or ["-- Error Reading File --"]
@@ -952,16 +963,14 @@ with st.sidebar:
         else:
             selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
     
-    # File upload section
-    st.markdown("---")
-    st.markdown("### Import Data")
-    uploaded_file = st.file_uploader("Import CSV or TXT", type=["csv", "txt"], 
-                                   help="Upload your chemical data file.", 
-                                   key="file_upload")
-    
-    # Store the uploaded file in session state
-    if uploaded_file is not None:
-        st.session_state.file_upload = uploaded_file
+    # Handle file upload state
+    if st.session_state.get('file_uploaded', False):
+        st.info(f"File uploaded: {st.session_state.file_name}")
+        if st.button("Remove file"):
+            st.session_state.file_uploaded = False
+            st.session_state.file_name = None
+            st.session_state.file_processed_chem_list = None
+            st.rerun()
     
     # Filter and SSD configuration options
     st.markdown("---")
