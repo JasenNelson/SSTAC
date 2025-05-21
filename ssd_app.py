@@ -878,6 +878,7 @@ if 'file_processed_chem_list' not in st.session_state:
 is_ready_to_generate = False
 generate_button = False
 # --- Sidebar: Single source of truth for file upload and chemical selection ---
+selected_chemicals = []  # Always define before use
 with st.sidebar:
     uploaded_file = st.file_uploader("Import CSV or TXT", type=["csv", "txt"], help="Upload your chemical data file.", key="file_upload")
     st.markdown("---")
@@ -901,10 +902,10 @@ with st.sidebar:
         )
         # Filter out the placeholder
         # If 'Select All' is selected, select all chemicals except 'Select All' and placeholders
-    if "Select All" in selected_chemicals:
-        selected_chemicals = [c for c in current_chemical_options if c != "Select All" and not c.startswith("--")]
-    else:
-        selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
+        if "Select All" in selected_chemicals:
+            selected_chemicals = [c for c in current_chemical_options if c != "Select All" and not c.startswith("--")]
+        else:
+            selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
         valid_chem_names = [opt for opt in current_chemical_options if not opt.startswith('--') and opt.strip()]
         if len(valid_chem_names) == 0:
             st.warning("No valid chemical names found. Please check your file format.")
