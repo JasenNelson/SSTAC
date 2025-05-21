@@ -73,36 +73,6 @@ def initialize_supabase_connection():
     except Exception as e:
         st.error(f"Failed to initialize Supabase connection: {e}")
         return None
-        # If not found in secrets, try environment variables (for local development)
-        if not supabase_url or not supabase_key:
-            supabase_url = os.getenv("SUPABASE_URL")
-            supabase_key = os.getenv("SUPABASE_KEY")
-        
-        if not supabase_url or not supabase_key:
-            st.error("Supabase credentials not found")
-            st.error("Please configure these in either:")
-            st.error("1. Streamlit Cloud Secrets (recommended for deployment):")
-            st.error("   - Go to your Streamlit app settings")
-            st.error("   - Add a new section called [supabase]")
-            st.error("   - Add the following keys:")
-            st.error("     - url: Your Supabase project URL")
-            st.error("     - anon_key: Your Supabase anon key")
-            st.error("""Example configuration:
-[supabase]
-url = "https://your-project.supabase.co"
-anon_key = "your-anon-key-here"
-""")
-            st.error("OR")
-            st.error("2. Environment variables (for local development):")
-            st.error("   - Create a .env file in your project root")
-            st.error("   - Add SUPABASE_URL and SUPABASE_KEY")
-            return None
-
-        from supabase import create_client
-        return create_client(supabase_url, supabase_key)
-    except Exception as e:
-        st.error(f"Failed to initialize Supabase connection: {e}")
-        return None
 
 supabase_conn = initialize_supabase_connection()
 if supabase_conn is None:
