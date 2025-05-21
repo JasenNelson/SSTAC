@@ -907,17 +907,6 @@ with st.sidebar:
                 current_chemical_options = ["-- No Chemical Names Found --"]
         else:
             current_chemical_options = ["-- No Chemical Names Found --"]
-    else:
-        # --- DATABASE WORKFLOW: No file uploaded ---
-        chem_df = pd.DataFrame(st.session_state.get('chemicals_data', []))
-        if not chem_df.empty and 'chemical_name' in chem_df.columns:
-            raw_chem_options = chem_df['chemical_name'].dropna().astype(str).str.strip().unique().tolist()
-            if raw_chem_options:
-                current_chemical_options = ["Select All"] + raw_chem_options
-            else:
-                current_chemical_options = ["-- No Chemical Names Found --"]
-        else:
-            current_chemical_options = ["-- No Chemical Names Found --"]
         selected_chemicals = st.multiselect(
             "Select Chemicals from File",
             options=current_chemical_options,
