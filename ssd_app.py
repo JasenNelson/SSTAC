@@ -1030,6 +1030,18 @@ with st.sidebar:
         selected_chemicals and
         all([c not in (None, "-- Upload File First --", "-- Error Reading File --") for c in selected_chemicals])
     )
+    
+    # Add Generate SSD button
+    st.markdown("---")
+    generate_button = st.button(
+        "Generate SSD",
+        key=f"generate_ssd_btn{key_suffix}",
+        disabled=not is_ready_to_generate,
+        help="Click to generate the Species Sensitivity Distribution plot"
+    )
+    
+    if not is_ready_to_generate and (uploaded_file is not None or st.session_state.get('chemicals_data')):
+        st.warning("Please select at least one chemical to generate the SSD.")
 
 
 
