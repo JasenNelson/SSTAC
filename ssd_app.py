@@ -882,6 +882,22 @@ selected_chemicals = []  # Always define before use
 current_chemical_options = []  # Always define before use
 key_suffix = ""  # Always define before use
 with st.sidebar:
+    # Database search widget
+    st.markdown("### Search Database")
+    search_term = st.text_input(
+        "Search chemicals by name or CAS number",
+        key="search_term",
+        help="Enter part of a chemical name or CAS number to search the database"
+    )
+    
+    if st.button("Search", key="search_button"):
+        with st.spinner("Searching database..."):
+            if search_term and search_term.strip():
+                fetch_chemicals(search_term)
+            else:
+                st.warning("Please enter a search term")
+    
+    st.markdown("---")
     uploaded_file = st.file_uploader("Import CSV or TXT", type=["csv", "txt"], help="Upload your chemical data file.", key="file_upload")
     st.markdown("---")
     st.markdown("### Chemical Management")
