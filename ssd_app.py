@@ -1005,7 +1005,7 @@ with st.sidebar:
     selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
     endpoint_type = st.radio(
         "Endpoint Type", ('Acute (LC50, EC50)', 'Chronic (NOEC, LOEC, EC10)'), index=0,
-        key=f"endpoint_type{key_suffix}",
+        key="endpoint_type_supabase",
         help="Select the general type of endpoint to include."
     )
 if uploaded_file is not None:
