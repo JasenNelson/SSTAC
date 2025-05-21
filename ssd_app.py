@@ -945,22 +945,76 @@ if 'file_processed_chem_list' not in st.session_state:
     st.session_state.file_processed_chem_list = None
 
 # --- Sidebar for Inputs ---
+# --- Sidebar: Single source of truth for file upload and chemical selection ---
 with st.sidebar:
-    st.header("⚙️ Settings")
-    # File upload
-    uploaded_file = st.file_uploader("1. Upload Processed Data File", type=['csv', 'txt'])
-    chemical_options = ["-- Upload File First --"]
+    uploaded_file = st.file_uploader("Import CSV or TXT", type=["csv", "txt"], help="Upload your chemical data file.")
+    st.markdown("---")
+    st.markdown("### Chemical Management")
     if uploaded_file is not None:
         if uploaded_file != st.session_state.get('last_uploaded_file', None) or st.session_state.file_processed_chem_list is None:
             st.session_state.last_uploaded_file = uploaded_file
             with st.spinner("Reading chemical list..."):
                 st.session_state.file_processed_chem_list = get_chemical_options(uploaded_file)
         chemical_options = st.session_state.file_processed_chem_list or ["-- Error Reading File --"]
+        # --- FILE UPLOADED: Only show file-based workflow ---
+        st.markdown("#### Chemical Selection (From Uploaded File)")
+        st.info("You have uploaded a file. The chemical selection and options below use only your uploaded data. To use the database, remove the file.")
+        key_suffix = '_file'
+        current_chemical_options = chemical_options
+        selected_chemicals = st.multiselect(
+            "Select Chemicals from File",
+            options=current_chemical_options,
+            key=f"selected_chemicals{key_suffix}",
+            help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
+        )
+        # Filter out the placeholder
+        selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
+    elif st.session_state.chemicals_loaded:
+        # --- NO FILE: Database workflow ---
+        st.markdown("#### Chemical Search and Filters (From Database)")
+        st.info("No file uploaded. The options below let you search and filter chemicals from the central database.")
+        key_suffix = '_supabase'
+        current_chemical_options = [chem['chemical_name'] for chem in st.session_state.get('chemicals_data', [])] or ["-- No Chemicals Loaded --"]
+        search_term = st.text_input(
+            "Search Toxicology Data",
+            key=f"chem_search{key_suffix}",
+            help="You can now search for any part of a chemical name (e.g., 'ace' will match 'Acetone'). Enter at least 3 characters."
+        )
+        if search_term and len(search_term.strip()) < 3:
+            st.warning("Please enter at least 3 characters to search any part of the chemical name.")
+            search_term = None
+        group_options = st.multiselect(
+            "Filter by Group",
+            options=["All"] + sorted(set([chem.get('group', 'Unknown') for chem in st.session_state.get('chemicals_data', [])])),
+            default=["All"],
+            key=f"group_filter{key_suffix}",
+            help="Select chemical groups to filter the search results"
+        )
+        media_options = st.multiselect(
+            "Filter by Media",
+            options=['All', 'Water/Wastewater', 'Soil/Sediment', 'Air', 'Biota', 'Food'],
+            default=['All'],
+            key=f"media_filter{key_suffix}",
+            help="Select media types to filter the toxicology data based on their measurement units"
+        )
+        selected_chemicals = st.multiselect(
+            "Select Chemicals from Database",
+            options=current_chemical_options,
+            key=f"selected_chemicals{key_suffix}",
+            help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
+        )
+        # Filter out the placeholder
+        selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
+# End of sidebar block
 
-    # Streamlined UI: show only relevant options depending on data source
+# All downstream logic should use the sidebar's uploaded_file, chemical_options, and selected_chemicals
+with st.sidebar:
+    uploaded_file = st.file_uploader("Import CSV or TXT", type=["csv", "txt"], help="Upload your chemical data file.")
+    st.markdown("---")
+    st.markdown("### Chemical Management")
     if uploaded_file is not None:
         # --- FILE UPLOADED: Only show file-based workflow ---
-        st.markdown("### Chemical Selection (From Uploaded File)")
+        st.markdown("#### Chemical Selection (From Uploaded File)")
         st.info("You have uploaded a file. The chemical selection and options below use only your uploaded data. To use the database, remove the file.")
         key_suffix = '_file'
         current_chemical_options = chemical_options
@@ -994,7 +1048,7 @@ with st.sidebar:
         )
     elif st.session_state.chemicals_loaded:
         # --- NO FILE: Database workflow ---
-        st.markdown("### Chemical Search and Filters (From Database)")
+        st.markdown("#### Chemical Search and Filters (From Database)")
         st.info("No file uploaded. The options below let you search and filter chemicals from the central database.")
         key_suffix = '_supabase'
         current_chemical_options = [chem['chemical_name'] for chem in st.session_state.get('chemicals_data', [])] or ["-- No Chemicals Loaded --"]
