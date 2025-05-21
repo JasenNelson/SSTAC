@@ -977,11 +977,7 @@ with st.sidebar:
             all([c not in (None, "-- Upload File First --", "-- Error Reading File --") for c in selected_chemicals])
         )
 
-    options=['All', 'Water/Wastewater', 'Soil/Sediment', 'Air', 'Biota', 'Food'],
-    default=['All'],
-    key=f"media_filter{key_suffix}",
-    help="Select media types to filter the toxicology data based on their measurement units"
-)
+
 
 # Define current_chemical_options for database workflow
 chem_df = pd.DataFrame(st.session_state.get('chemicals_data', []))
