@@ -955,8 +955,29 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### Filter Options")
     
-    # Only show group and media filters when not in file upload mode
-    if uploaded_file is None:
+    # Always show group and media filters, but adjust options based on data source
+    if uploaded_file is not None:
+        # For file uploads, get groups from the uploaded data if available
+        if 'file_processed_chem_list' in st.session_state and st.session_state.file_processed_chem_list:
+            group_options = st.multiselect(
+                "Filter by Group",
+                options=["All"] + sorted(set([chem.get('group', 'Unknown') for chem in st.session_state.get('chemicals_data', [])])),
+                default=["All"],
+                key=f"group_filter{key_suffix}",
+                help="Select chemical groups to filter the search results"
+            )
+        else:
+            group_options = ["All"]
+            
+        media_options = st.multiselect(
+            "Filter by Media",
+            options=['All', 'Water/Wastewater', 'Soil/Sediment', 'Air', 'Biota', 'Food'],
+            default=['All'],
+            key=f"media_filter{key_suffix}",
+            help="Select media types to filter the data based on their measurement units"
+        )
+    else:
+        # For database searches
         group_options = st.multiselect(
             "Filter by Group",
             options=["All"] + sorted(set([chem.get('group', 'Unknown') for chem in st.session_state.get('chemicals_data', [])])),
