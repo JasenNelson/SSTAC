@@ -961,6 +961,11 @@ with st.sidebar:
             "Select Chemicals from File",
             options=current_chemical_options,
             key=f"selected_chemicals{key_suffix}",
+            help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
+        )
+        # Filter out the placeholder
+        selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
+
             help="Select multiple chemicals by holding Ctrl/Cmd"
         )
         valid_chem_names = [opt for opt in current_chemical_options if not opt.startswith('--') and opt.strip()]
@@ -1014,6 +1019,11 @@ with st.sidebar:
             "Select Chemicals from Database",
             options=current_chemical_options,
             key=f"selected_chemicals{key_suffix}",
+            help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
+        )
+        # Filter out the placeholder
+        selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
+
             help="Select multiple chemicals by holding Ctrl/Cmd"
         )
         valid_chem_names = [opt for opt in current_chemical_options if not opt.startswith('--') and opt.strip()]
