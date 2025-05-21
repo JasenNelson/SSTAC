@@ -601,6 +601,14 @@ def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
         font=dict(color='#FFF'),
 
     )
+    # Add HCp marker if it is valid (only ONCE)
+    if hcp_x is not None:
+        hcp_percent = plot_data.get('hcp_p_percent', p_value)
+        if hcp_percent <= 1.0:
+            hcp_percent = hcp_percent * 100
+        fig.add_trace(go.Scatter(
+            x=[hcp_x],
+            y=[hcp_percent],
             mode='markers',
             marker=dict(size=14, color='yellow', symbol='x'),
             name=f'HC{hcp_percent:.1f}'
