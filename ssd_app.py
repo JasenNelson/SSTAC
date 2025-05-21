@@ -998,6 +998,12 @@ with st.sidebar:
         key=f"media_filter{key_suffix}",
         help="Select media types to filter the toxicology data based on their measurement units"
     )
+        # Define current_chemical_options for database workflow
+    chem_df = pd.DataFrame(st.session_state.get('chemicals_data', []))
+    if not chem_df.empty and 'chemical_name' in chem_df.columns:
+        current_chemical_options = ["-- Select Chemical --"] + chem_df['chemical_name'].dropna().astype(str).str.strip().unique().tolist()
+    else:
+        current_chemical_options = ["-- No Chemical Names Found --"]
     selected_chemicals = st.multiselect(
         "Select Chemicals from Database",
         options=current_chemical_options,
