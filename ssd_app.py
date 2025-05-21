@@ -781,62 +781,10 @@ def fetch_chemicals(search_term=None):
 
 # Using pre-initialized Supabase connection from initialization section
 if supabase_conn:
-    with st.expander("Chemical Management", expanded=False):
-        st.write("Manage your chemical database:")
-        
-        # Add search box with guidance for substring search (trigram index enabled)
-        search_term = st.text_input(
-            "Search Toxicology Data",
-            key="chem_search",
-            help="You can now search for any part of a chemical name (e.g., 'ace' will match 'Acetone' or 'Tris(2-chloroethyl) phosphate'). For best performance, enter at least 3 characters."
-        )
-        # Input validation: warn if search term is too short
-        if search_term and len(search_term.strip()) < 3:
-            st.warning("Please enter at least 3 characters to search any part of the chemical name.")
-            search_term = None  # Prevent fetch_chemicals from running
-        
-        # Add group filter
-        group_options = st.multiselect(
-            "Filter by Group",
-            options=["All", 
-                    'Organic Compounds (Aliphatic)', 'Organic Compounds (Aromatic)',
-                    'Inorganic Compounds (Acids)', 'Inorganic Compounds (Bases)', 'Inorganic Compounds (Salts)',
-                    'Metals (Heavy Metals)', 'Metals (Transition Metals)', 'Metals (Alkali Metals)',
-                    'Pesticides (Herbicides)', 'Pesticides (Insecticides)', 'Pesticides (Fungicides)',
-                    'Pharmaceuticals (Antibiotics)', 'Pharmaceuticals (Antivirals)', 'Pharmaceuticals (Analgesics)',
-                    'Plastics (Thermoplastics)', 'Plastics (Thermosets)', 'Plastics (Biodegradable)',
-                    'Solvents (Polar)', 'Solvents (Non-polar)', 'Solvents (Aprotic)',
-                    'Surfactants (Anionic)', 'Surfactants (Cationic)', 'Surfactants (Non-ionic)',
-                    'Dyes (Acidic)', 'Dyes (Basic)', 'Dyes (Direct)',
-                    'Industrial Chemicals (Corrosives)', 'Industrial Chemicals (Flammables)', 'Industrial Chemicals (Toxic)',
-                    'Nanomaterials (Metallic)', 'Nanomaterials (Carbon-based)', 'Nanomaterials (Oxide)',
-                    'Radioactive Substances (Alpha)', 'Radioactive Substances (Beta)', 'Radioactive Substances (Gamma)',
-                    'Biocides (Disinfectants)', 'Biocides (Antimicrobials)', 'Biocides (Preservatives)',
-                    'Food Additives (Preservatives)', 'Food Additives (Colorants)', 'Food Additives (Emulsifiers)',
-                    'Cosmetics (Skin Care)', 'Cosmetics (Hair Care)', 'Cosmetics (Makeup)'],
-            default=["All"],
-            key="group_filter",
-            help="Select chemical groups to filter the search results"
-        )
-
-        # Add media filter
-        media_options = st.multiselect(
-            "Filter by Media",
-            options=['All', 'Water/Wastewater', 'Soil/Sediment', 'Air', 'Biota', 'Food'],
-            default=['All'],
-            key="media_filter",
-            help="Select media types to filter the toxicology data based on their measurement units"
-        )
-
-        # --- Ensure session state variables are initialized ---
-        if 'chemical_groups' not in st.session_state:
-            st.session_state.chemical_groups = {}
-        if 'chemicals_data' not in st.session_state:
-            st.session_state.chemicals_data = []
-        if 'chemicals_loaded' not in st.session_state:
-            st.session_state.chemicals_loaded = False
-        if 'file_processed_chem_list' not in st.session_state:
-            st.session_state.file_processed_chem_list = []
+    # [REMOVED: Legacy main-panel chemical management expander]
+    # All chemical management UI is now in the sidebar.
+    # [REMOVED: orphaned block after expander deletion]
+    # All chemical management UI is now in the sidebar.
 
         # Add fetch chemicals button with unique key
         chem_data = []  # Ensure chem_data is always defined
