@@ -972,33 +972,32 @@ with st.sidebar:
     else:
         current_chemical_options = ["-- No Chemical Names Found --"]
 
-else:
-        # --- Main instructions at the top of the main page ---
-        st.markdown("## Upload a file or fetch chemicals from the database to begin.")
-        st.markdown(
-            "Upload a file using the sidebar to populate the chemical list and enable analysis."
-        )
-        st.markdown("""
+# --- Main instructions at the top of the main page ---
+st.markdown("## Upload a file or fetch chemicals from the database to begin.")
+st.markdown(
+    "Upload a file using the sidebar to populate the chemical list and enable analysis."
+)
+st.markdown("""
 Upload your **processed** ecotoxicity data file (e.g., a `.csv` containing the required columns:
 `test_cas`, `chemical_name`, `species_scientific_name`, `species_common_name`, `species_group`,
 `endpoint`, `effect`, `conc1_mean`, `conc1_unit`). Select the chemical from the dropdown and
 configure parameters to generate the SSD.
 """)
-        # Only show distribution_fit and hcp_percentile here
-        distribution_fit = st.selectbox(
-            "Distribution for Fitting", ('Log-Normal', 'Log-Logistic'), index=0,
-            help="Statistical distribution to fit to the log-transformed data."
-        )
-        hcp_percentile = st.number_input(
-            "Hazard Concentration (HCp) Percentile", min_value=0.1, max_value=99.9, value=5.0, step=0.1, format="%.1f",
-            help="The percentile 'p' for which to calculate the HCp (e.g., 5 for HC5)."
-        )
-
+# Only show distribution_fit and hcp_percentile here
+distribution_fit = st.selectbox(
+    "Distribution for Fitting", ('Log-Normal', 'Log-Logistic'), index=0,
+    help="Statistical distribution to fit to the log-transformed data."
+)
+hcp_percentile = st.number_input(
+    "Hazard Concentration (HCp) Percentile", min_value=0.1, max_value=99.9, value=5.0, step=0.1, format="%.1f",
+    help="The percentile 'p' for which to calculate the HCp (e.g., 5 for HC5)."
+)
 
 # --- Main Area for Processing and Output ---
 results_area = st.container()
 plot_area = st.container()
 
+# ... (rest of the code remains the same)
 
 if generate_button and is_ready_to_generate: # Check readiness flag
     try:
