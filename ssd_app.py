@@ -552,6 +552,7 @@ def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
     """ Generates the SSD Plotly figure with x-axis in real concentration units (log scale). """
     if plot_data is None: return go.Figure()
     import numpy as np
+    import plotly.graph_objects as go
     # Transform log10 values back to real concentrations for plotting
     empirical_x = 10 ** np.array(plot_data['empirical_log_values'])
     fitted_x = 10 ** np.array(plot_data['fitted_log_values'])
@@ -600,6 +601,20 @@ def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
         font=dict(color='#FFF'),
 
     )
+    # Add HCp marker if it is valid
+    if hcp_x is not None:
+        # y-value is the percentile (e.g., 5 for HC5)
+        hcp_percent = plot_data.get('hcp_p_percent', p_value)
+        # If it's a fraction, convert to percent
+        if hcp_percent <= 1.0:
+            hcp_percent = hcp_percent * 100
+        fig.add_trace(go.Scatter(
+            x=[hcp_x],
+            y=[hcp_percent],
+            mode='markers',
+            marker=dict(size=14, color='yellow', symbol='x'),
+            name=f'HC{hcp_percent:.1f}'
+        ))
     return fig
 
 def get_chemical_names(df_chem, chem_col):
