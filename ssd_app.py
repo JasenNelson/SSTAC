@@ -988,6 +988,14 @@ if not chem_df.empty and 'chemical_name' in chem_df.columns:
     else:
         current_chemical_options = ["-- No Chemical Names Found --"]
 
+# Sidebar widget for chemical selection
+selected_chemicals = st.sidebar.multiselect(
+    "Select Chemicals",
+    options=current_chemical_options,
+    default=[],
+    key="chemical_select"
+)
+
 # --- Main instructions at the top of the main page ---
 st.markdown("## Upload a file or fetch chemicals from the database to begin.")
 st.markdown(
