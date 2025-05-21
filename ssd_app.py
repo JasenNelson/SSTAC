@@ -920,6 +920,14 @@ with st.sidebar:
             "Handle Multiple Values per Species", ('Use Geometric Mean', 'Use Most Sensitive (Minimum Value)'), index=0,
             key=f"data_handling{key_suffix}",
         )
+        distribution_fit = st.selectbox(
+            "Distribution for Fitting", ('Log-Normal', 'Log-Logistic'), index=0,
+            help="Statistical distribution to fit to the log-transformed data."
+        )
+        hcp_percentile = st.number_input(
+            "Hazard Concentration (HCp) Percentile", min_value=0.1, max_value=99.9, value=5.0, step=0.1, format="%.1f",
+            help="The percentile 'p' for which to calculate the HCp (e.g., 5 for HC5)."
+        )
         # *** MODIFIED: Button enabling logic for multi-select ***
         is_ready_to_generate = (
             uploaded_file is not None and
@@ -983,15 +991,6 @@ Upload your **processed** ecotoxicity data file (e.g., a `.csv` containing the r
 `endpoint`, `effect`, `conc1_mean`, `conc1_unit`). Select the chemical from the dropdown and
 configure parameters to generate the SSD.
 """)
-# Only show distribution_fit and hcp_percentile here
-distribution_fit = st.selectbox(
-    "Distribution for Fitting", ('Log-Normal', 'Log-Logistic'), index=0,
-    help="Statistical distribution to fit to the log-transformed data."
-)
-hcp_percentile = st.number_input(
-    "Hazard Concentration (HCp) Percentile", min_value=0.1, max_value=99.9, value=5.0, step=0.1, format="%.1f",
-    help="The percentile 'p' for which to calculate the HCp (e.g., 5 for HC5)."
-)
 
 # --- Main Area for Processing and Output ---
 results_area = st.container()
