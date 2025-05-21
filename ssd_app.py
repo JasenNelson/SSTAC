@@ -1047,16 +1047,24 @@ configure parameters to generate the SSD.
         )
 
     # *** MODIFIED: Button enabling logic for multi-select ***
-        is_ready_to_generate = (
-            uploaded_file is not None and
-            selected_chemicals and
-            all([c not in (None, "-- Upload File First --", "-- Error Reading File --") for c in selected_chemicals])
-        )
-generate_button = st.button("🚀 Generate SSD", disabled=(not is_ready_to_generate))
+if uploaded_file is not None:
+    is_ready_to_generate = (
+        uploaded_file is not None and
+        selected_chemicals and
+        all([c not in (None, "-- Upload File First --", "-- Error Reading File --") for c in selected_chemicals])
+    )
+    generate_button = st.button("🚀 Generate SSD", key="generate_ssd_file", disabled=(not is_ready_to_generate))
+else:
+    is_ready_to_generate = (
+        selected_chemicals and
+        all([c not in (None, "-- Upload File First --", "-- Error Reading File --") for c in selected_chemicals])
+    )
+    generate_button = st.button("🚀 Generate SSD", key="generate_ssd_supabase", disabled=(not is_ready_to_generate))
 
 # --- Main Area for Processing and Output ---
 results_area = st.container()
 plot_area = st.container()
+
 
 if generate_button and is_ready_to_generate: # Check readiness flag
     try:
