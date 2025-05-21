@@ -899,8 +899,12 @@ with st.sidebar:
     
     st.markdown("---")
     uploaded_file = st.file_uploader("Import CSV or TXT", type=["csv", "txt"], help="Upload your chemical data file.", key="file_upload")
+    
+    # Always show chemical management section
     st.markdown("---")
     st.markdown("### Chemical Management")
+    
+    # Handle file upload or database selection
     if uploaded_file is not None:
         key_suffix = '_file'
         if uploaded_file != st.session_state.get('last_uploaded_file', None) or st.session_state.file_processed_chem_list is None:
@@ -908,7 +912,7 @@ with st.sidebar:
             with st.spinner("Reading chemical list..."):
                 st.session_state.file_processed_chem_list = get_chemical_options(uploaded_file)
         chemical_options = st.session_state.file_processed_chem_list or ["-- Error Reading File --"]
-        # --- FILE UPLOADED: Only show file-based workflow ---
+        # --- FILE UPLOADED: Show file-based workflow ---
         st.markdown("#### Chemical Selection (From Uploaded File)")
         st.info("You have uploaded a file. The chemical selection and options below use only your uploaded data. To use the database, remove the file.")
         current_chemical_options = chemical_options
@@ -930,6 +934,25 @@ with st.sidebar:
                 current_chemical_options = ["-- No Chemical Names Found --"]
         else:
             current_chemical_options = ["-- No Chemical Names Found --"]
+            
+        selected_chemicals = st.multiselect(
+            "Select Chemicals from Database",
+            options=current_chemical_options,
+            key=f"selected_chemicals{key_suffix}",
+            help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
+        )
+        # Filter out the placeholder and handle 'Select All'
+        if "Select All" in selected_chemicals:
+            selected_chemicals = [c for c in current_chemical_options if c != "Select All" and not c.startswith("--")]
+        else:
+            selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
+    
+    # Always show filter and SSD configuration options
+    st.markdown("---")
+    st.markdown("### Filter Options")
+    
+    # Only show group and media filters when not in file upload mode
+    if uploaded_file is None:
         group_options = st.multiselect(
             "Filter by Group",
             options=["All"] + sorted(set([chem.get('group', 'Unknown') for chem in st.session_state.get('chemicals_data', [])])),
@@ -944,54 +967,69 @@ with st.sidebar:
             key=f"media_filter{key_suffix}",
             help="Select media types to filter the toxicology data based on their measurement units"
         )
-        selected_chemicals = st.multiselect(
-            "Select Chemicals from Database",
-            options=current_chemical_options,
-            key=f"selected_chemicals{key_suffix}",
-            help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
-        )
-        # Filter out the placeholder
-        # If 'Select All' is selected, select all chemicals except 'Select All' and placeholders
-        if "Select All" in selected_chemicals:
-            selected_chemicals = [c for c in current_chemical_options if c != "Select All" and not c.startswith("--")]
-        else:
-            selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
-        valid_chem_names = [opt for opt in current_chemical_options if not opt.startswith('--') and opt.strip()]
-        if len(valid_chem_names) == 0:
-            st.warning("No valid chemical names found. Please check your file format.")
-        endpoint_type = st.radio(
-            "Endpoint Type", ('Acute (LC50, EC50)', 'Chronic (NOEC, LOEC, EC10)'), index=0,
-        key="endpoint_type_file",
+    
+    # Always show SSD configuration options
+    st.markdown("---")
+    st.markdown("### SSD Configuration")
+    
+    endpoint_type = st.radio(
+        "Endpoint Type", 
+        ('Acute (LC50, EC50)', 'Chronic (NOEC, LOEC, EC10)'), 
+        index=0,
+        key=f"endpoint_type{key_suffix}",
         help="Select the general type of endpoint to include."
-        )
-        min_species = st.number_input(
-            "Minimum Number of Species", min_value=3, value=5, step=1,
-            key=f"min_species{key_suffix}",
-            help="Minimum unique species required after filtering."
-        )
-        required_taxa_broad = st.multiselect(
-            "Required Taxonomic Groups", options=list(TAXONOMIC_MAPPING.keys()), default=list(TAXONOMIC_MAPPING.keys())[:3],
-            key=f"required_taxa_broad{key_suffix}",
-            help="Select the broad taxonomic groups that *must* be represented."
-        )
-        data_handling = st.radio(
-            "Handle Multiple Values per Species", ('Use Geometric Mean', 'Use Most Sensitive (Minimum Value)'), index=0,
-            key=f"data_handling{key_suffix}",
-        )
-        distribution_fit = st.selectbox(
-            "Distribution for Fitting", ('Log-Normal', 'Log-Logistic'), index=0,
-            help="Statistical distribution to fit to the log-transformed data."
-        )
-        hcp_percentile = st.number_input(
-            "Hazard Concentration (HCp) Percentile", min_value=0.1, max_value=99.9, value=5.0, step=0.1, format="%.1f",
-            help="The percentile 'p' for which to calculate the HCp (e.g., 5 for HC5)."
-        )
-        # *** MODIFIED: Button enabling logic for multi-select ***
-        is_ready_to_generate = (
-            uploaded_file is not None and
-            selected_chemicals and
-            all([c not in (None, "-- Upload File First --", "-- Error Reading File --") for c in selected_chemicals])
-        )
+    )
+    
+    min_species = st.number_input(
+        "Minimum Number of Species", 
+        min_value=3, 
+        value=5, 
+        step=1,
+        key=f"min_species{key_suffix}",
+        help="Minimum unique species required after filtering."
+    )
+    
+    required_taxa_broad = st.multiselect(
+        "Required Taxonomic Groups", 
+        options=list(TAXONOMIC_MAPPING.keys()), 
+        default=list(TAXONOMIC_MAPPING.keys())[:3],
+        key=f"required_taxa_broad{key_suffix}",
+        help="Select the broad taxonomic groups that *must* be represented."
+    )
+    
+    data_handling = st.radio(
+        "Handle Multiple Values per Species", 
+        ('Use Geometric Mean', 'Use Most Sensitive (Minimum Value)'), 
+        index=0,
+        key=f"data_handling{key_suffix}",
+        help="Choose how to handle multiple toxicity values for the same species"
+    )
+    
+    distribution_fit = st.selectbox(
+        "Distribution for Fitting", 
+        ('Log-Normal', 'Log-Logistic'), 
+        index=0,
+        key=f"dist_fit{key_suffix}",
+        help="Statistical distribution to fit to the log-transformed data."
+    )
+    
+    hcp_percentile = st.number_input(
+        "Hazard Concentration (HCp) Percentile", 
+        min_value=0.1, 
+        max_value=99.9, 
+        value=5.0, 
+        step=0.1, 
+        format="%.1f",
+        key=f"hcp_percentile{key_suffix}",
+        help="The percentile 'p' for which to calculate the HCp (e.g., 5 for HC5)."
+    )
+    
+    # Button enabling logic
+    is_ready_to_generate = bool(
+        (uploaded_file is not None or st.session_state.get('chemicals_data')) and
+        selected_chemicals and
+        all([c not in (None, "-- Upload File First --", "-- Error Reading File --") for c in selected_chemicals])
+    )
 
 
 
