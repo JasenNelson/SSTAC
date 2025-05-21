@@ -890,12 +890,12 @@ with st.sidebar:
             else:
                 st.warning("Please enter a search term")
     
-    st.markdown("---")
-    uploaded_file = st.file_uploader("Import CSV or TXT", type=["csv", "txt"], help="Upload your chemical data file.", key="file_upload")
-    
-    # Always show chemical management section
+    # Chemical management section
     st.markdown("---")
     st.markdown("### Chemical Management")
+    
+    # Get file from session state if it exists
+    uploaded_file = st.session_state.get('file_upload')  # Get from session state to maintain state
     
     # Handle file upload or database selection
     if uploaded_file is not None:
@@ -940,7 +940,18 @@ with st.sidebar:
         else:
             selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
     
-    # Always show filter and SSD configuration options
+    # File upload section
+    st.markdown("---")
+    st.markdown("### Import Data")
+    uploaded_file = st.file_uploader("Import CSV or TXT", type=["csv", "txt"], 
+                                   help="Upload your chemical data file.", 
+                                   key="file_upload")
+    
+    # Store the uploaded file in session state
+    if uploaded_file is not None:
+        st.session_state.file_upload = uploaded_file
+    
+    # Filter and SSD configuration options
     st.markdown("---")
     st.markdown("### Filter Options")
     
