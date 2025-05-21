@@ -432,6 +432,31 @@ def get_chemical_group(species_group):
     return "Organic Compounds (Other)"
 
 # --- Helper Functions --- (Keep these as is: map_taxonomic_group, get_distribution, calculate_ssd, create_ssd_plot)
+
+def get_chemical_options(uploaded_file):
+    """
+    Reads the uploaded file and returns a list of chemical options.
+    """
+    import pandas as pd
+    from io import StringIO
+
+    if uploaded_file is None:
+        return ["-- Upload File First --"]
+    try:
+        uploaded_file.seek(0)
+        file_content = uploaded_file.getvalue()
+        # Try CSV first
+        try:
+            df = pd.read_csv(StringIO(file_content.decode('latin-1')), sep=',')
+        except Exception:
+            df = pd.read_csv(StringIO(file_content.decode('latin-1')), sep='\t')
+        # Use the expected chemical name column
+        chem_col = ECOTOX_EXPECTED_COLS.get('chemical', 'chemical_name')
+        return get_chemical_names(df, chem_col)
+    except Exception as e:
+        st.error(f"Error reading uploaded file: {e}")
+        return ["-- Error Reading File --"]
+
 def map_taxonomic_group(ecotox_group):
     """Maps detailed ECOTOX group to broader category."""
     for broad_group, detailed_list in TAXONOMIC_MAPPING.items():
