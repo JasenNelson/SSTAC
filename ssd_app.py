@@ -613,6 +613,13 @@ def create_ssd_plot(plot_data, hcp, p_value, dist_name, unit):
             marker=dict(size=14, color='yellow', symbol='x'),
             name=f'HC{hcp_percent:.1f}'
         ))
+    # Hide duplicate HCp legend entries
+    seen_names = set()
+    for trace in fig.data:
+        if hasattr(trace, 'name') and trace.name in seen_names and trace.name and trace.name.startswith("HC"):
+            trace.showlegend = False
+        else:
+            seen_names.add(getattr(trace, 'name', None))
     return fig
 
 def get_chemical_names(df_chem, chem_col):
