@@ -885,6 +885,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### Chemical Management")
     if uploaded_file is not None:
+        key_suffix = '_file'
         if uploaded_file != st.session_state.get('last_uploaded_file', None) or st.session_state.file_processed_chem_list is None:
             st.session_state.last_uploaded_file = uploaded_file
             with st.spinner("Reading chemical list..."):
@@ -893,8 +894,19 @@ with st.sidebar:
         # --- FILE UPLOADED: Only show file-based workflow ---
         st.markdown("#### Chemical Selection (From Uploaded File)")
         st.info("You have uploaded a file. The chemical selection and options below use only your uploaded data. To use the database, remove the file.")
-        key_suffix = '_file'
         current_chemical_options = chemical_options
+    else:
+        key_suffix = '_supabase'
+        # --- DATABASE WORKFLOW: No file uploaded ---
+        chem_df = pd.DataFrame(st.session_state.get('chemicals_data', []))
+        if not chem_df.empty and 'chemical_name' in chem_df.columns:
+            raw_chem_options = chem_df['chemical_name'].dropna().astype(str).str.strip().unique().tolist()
+            if raw_chem_options:
+                current_chemical_options = ["Select All"] + raw_chem_options
+            else:
+                current_chemical_options = ["-- No Chemical Names Found --"]
+        else:
+            current_chemical_options = ["-- No Chemical Names Found --"]
     else:
         # --- DATABASE WORKFLOW: No file uploaded ---
         chem_df = pd.DataFrame(st.session_state.get('chemicals_data', []))
