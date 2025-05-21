@@ -971,35 +971,7 @@ with st.sidebar:
         current_chemical_options = ["-- Select Chemical --"] + chem_df['chemical_name'].dropna().astype(str).str.strip().unique().tolist()
     else:
         current_chemical_options = ["-- No Chemical Names Found --"]
-    selected_chemicals = st.multiselect(
-        "Select Chemicals from Database",
-        options=current_chemical_options,
-        key=f"selected_chemicals_supabase",
-        help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
-    )
-    # Filter out the placeholder
-    selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
-    endpoint_type = st.radio(
-        "Endpoint Type", ('Acute (LC50, EC50)', 'Chronic (NOEC, LOEC, EC10)'), index=0,
-        key="endpoint_type_supabase",
-        help="Select the general type of endpoint to include."
-    )
-if uploaded_file is not None:
-    min_species = st.number_input(
-        "Minimum Number of Species", min_value=3, value=5, step=1,
-        key="min_species_supabase",
-        help="Minimum unique species required after filtering."
-    )
-    required_taxa_broad = st.multiselect(
-        "Required Taxonomic Groups", options=list(TAXONOMIC_MAPPING.keys()), default=list(TAXONOMIC_MAPPING.keys())[:3],
-        key="required_taxa_broad_supabase",
-        help="Select the broad taxonomic groups that *must* be represented."
-    )
-    data_handling = st.radio(
-        "Handle Multiple Values per Species", ('Use Geometric Mean', 'Use Most Sensitive (Minimum Value)'), index=0,
-        key="data_handling_supabase",
-        help="How to aggregate multiple data points for the same species."
-    )
+
 else:
         # --- Main instructions at the top of the main page ---
         st.markdown("## Upload a file or fetch chemicals from the database to begin.")
