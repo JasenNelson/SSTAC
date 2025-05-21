@@ -998,65 +998,54 @@ with st.sidebar:
         key=f"media_filter{key_suffix}",
         help="Select media types to filter the toxicology data based on their measurement units"
     )
-    fetch_button = st.button("Fetch Toxicology Data from Supabase", key="fetch_chemicals_btn")
-    # After fetch, show chemical selection and parameter widgets only if chemicals_loaded is True
-    if st.session_state.chemicals_loaded:
-        current_chemical_options = [chem['chemical_name'] for chem in st.session_state.get('chemicals_data', [])] or ["-- No Chemicals Loaded --"]
-
-        media_options = st.multiselect(
-            "Filter by Media",
-            options=['All', 'Water/Wastewater', 'Soil/Sediment', 'Air', 'Biota', 'Food'],
-            default=['All'],
-            key=f"media_filter{key_suffix}",
-            help="Select media types to filter the toxicology data based on their measurement units"
-        )
-        selected_chemicals = st.multiselect(
-            "Select Chemicals from Database",
-            options=current_chemical_options,
-            key=f"selected_chemicals{key_suffix}",
-            help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
-        )
-        # Filter out the placeholder
-        selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
-        endpoint_type = st.radio(
-            "Endpoint Type", ('Acute (LC50, EC50)', 'Chronic (NOEC, LOEC, EC10)'), index=0,
-            key=f"endpoint_type{key_suffix}",
-            help="Select the general type of endpoint to include."
-        )
-        min_species = st.number_input(
-            "Minimum Number of Species", min_value=3, value=5, step=1,
-            key=f"min_species{key_suffix}",
-            help="Minimum unique species required after filtering."
-        )
-        required_taxa_broad = st.multiselect(
-            "Required Taxonomic Groups", options=list(TAXONOMIC_MAPPING.keys()), default=list(TAXONOMIC_MAPPING.keys())[:3],
-            key=f"required_taxa_broad{key_suffix}",
-            help="Select the broad taxonomic groups that *must* be represented."
-        )
-        data_handling = st.radio(
-            "Handle Multiple Values per Species", ('Use Geometric Mean', 'Use Most Sensitive (Minimum Value)'), index=0,
-            key=f"data_handling{key_suffix}",
-            help="How to aggregate multiple data points for the same species."
-        )
-    else:
+    selected_chemicals = st.multiselect(
+        "Select Chemicals from Database",
+        options=current_chemical_options,
+        key=f"selected_chemicals{key_suffix}",
+        help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
+    )
+    # Filter out the placeholder
+    selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
+    endpoint_type = st.radio(
+        "Endpoint Type", ('Acute (LC50, EC50)', 'Chronic (NOEC, LOEC, EC10)'), index=0,
+        key=f"endpoint_type{key_suffix}",
+        help="Select the general type of endpoint to include."
+    )
+if uploaded_file is not None:
+    min_species = st.number_input(
+        "Minimum Number of Species", min_value=3, value=5, step=1,
+        key=f"min_species{key_suffix}",
+        help="Minimum unique species required after filtering."
+    )
+    required_taxa_broad = st.multiselect(
+        "Required Taxonomic Groups", options=list(TAXONOMIC_MAPPING.keys()), default=list(TAXONOMIC_MAPPING.keys())[:3],
+        key=f"required_taxa_broad{key_suffix}",
+        help="Select the broad taxonomic groups that *must* be represented."
+    )
+    data_handling = st.radio(
+        "Handle Multiple Values per Species", ('Use Geometric Mean', 'Use Most Sensitive (Minimum Value)'), index=0,
+        key=f"data_handling{key_suffix}",
+        help="How to aggregate multiple data points for the same species."
+    )
+else:
         st.info("Upload a file or fetch chemicals from the database to begin.")
-    # Always show these options so distribution_fit and hcp_percentile are defined
-    distribution_fit = st.selectbox(
-        "7. Distribution for Fitting", ('Log-Normal', 'Log-Logistic'), index=0,
-        help="Statistical distribution to fit to the log-transformed data."
-    )
-    hcp_percentile = st.number_input(
-        "8. Hazard Concentration (HCp) Percentile", min_value=0.1, max_value=99.9, value=5.0, step=0.1, format="%.1f",
-        help="The percentile 'p' for which to calculate the HCp (e.g., 5 for HC5)."
-    )
+        # Always show these options so distribution_fit and hcp_percentile are defined
+        distribution_fit = st.selectbox(
+            "Distribution for Fitting", ('Log-Normal', 'Log-Logistic'), index=0,
+            help="Statistical distribution to fit to the log-transformed data."
+        )
+        hcp_percentile = st.number_input(
+            "Hazard Concentration (HCp) Percentile", min_value=0.1, max_value=99.9, value=5.0, step=0.1, format="%.1f",
+            help="The percentile 'p' for which to calculate the HCp (e.g., 5 for HC5)."
+        )
 
     # *** MODIFIED: Button enabling logic for multi-select ***
-    is_ready_to_generate = (
-        uploaded_file is not None and
-        selected_chemicals and
-        all([c not in (None, "-- Upload File First --", "-- Error Reading File --") for c in selected_chemicals])
-    )
-    generate_button = st.button("🚀 Generate SSD", disabled=(not is_ready_to_generate))
+        is_ready_to_generate = (
+            uploaded_file is not None and
+            selected_chemicals and
+            all([c not in (None, "-- Upload File First --", "-- Error Reading File --") for c in selected_chemicals])
+        )
+generate_button = st.button("🚀 Generate SSD", disabled=(not is_ready_to_generate))
 
 # --- Main Area for Processing and Output ---
 results_area = st.container()
