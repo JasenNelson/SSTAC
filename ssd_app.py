@@ -892,7 +892,7 @@ with st.sidebar:
         selected_chemicals = st.multiselect(
             "Select Chemicals from File",
             options=current_chemical_options,
-            key=f"selected_chemicals{key_suffix}",
+            key="selected_chemicals_file",
             help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
         )
         # Filter out the placeholder
