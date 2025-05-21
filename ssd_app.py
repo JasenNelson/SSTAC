@@ -895,7 +895,7 @@ if 'file_processed_chem_list' not in st.session_state:
 # --- Sidebar for Inputs ---
 # --- Sidebar: Single source of truth for file upload and chemical selection ---
 with st.sidebar:
-    uploaded_file = st.file_uploader("Import CSV or TXT", type=["csv", "txt"], help="Upload your chemical data file.")
+    uploaded_file = st.file_uploader("Import CSV or TXT", type=["csv", "txt"], help="Upload your chemical data file.", key="file_upload")
     st.markdown("---")
     st.markdown("### Chemical Management")
     if uploaded_file is not None:
@@ -938,65 +938,14 @@ with st.sidebar:
         data_handling = st.radio(
             "Handle Multiple Values per Species", ('Use Geometric Mean', 'Use Most Sensitive (Minimum Value)'), index=0,
             key=f"data_handling{key_suffix}",
-            help="How to aggregate multiple data points for the same species."
         )
-    elif st.session_state.chemicals_loaded:
-        # --- NO FILE: Database workflow ---
-        st.markdown("#### Chemical Search and Filters (From Database)")
-        st.info("No file uploaded. The options below let you search and filter chemicals from the central database.")
-        key_suffix = '_supabase'
-        current_chemical_options = [chem['chemical_name'] for chem in st.session_state.get('chemicals_data', [])] or ["-- No Chemicals Loaded --"]
-        search_term = st.text_input(
-            "Search Toxicology Data",
-            key=f"chem_search{key_suffix}",
-            help="You can now search for any part of a chemical name (e.g., 'ace' will match 'Acetone'). Enter at least 3 characters."
+        # *** MODIFIED: Button enabling logic for multi-select ***
+        is_ready_to_generate = (
+            uploaded_file is not None and
+            selected_chemicals and
+            all([c not in (None, "-- Upload File First --", "-- Error Reading File --") for c in selected_chemicals])
         )
-        if search_term and len(search_term.strip()) < 3:
-            st.warning("Please enter at least 3 characters to search any part of the chemical name.")
-            search_term = None
-        group_options = st.multiselect(
-            "Filter by Group",
-            options=["All"] + sorted(set([chem.get('group', 'Unknown') for chem in st.session_state.get('chemicals_data', [])])),
-            default=["All"],
-            key=f"group_filter{key_suffix}",
-            help="Select chemical groups to filter the search results"
-        )
-        media_options = st.multiselect(
-            "Filter by Media",
-            options=['All', 'Water/Wastewater', 'Soil/Sediment', 'Air', 'Biota', 'Food'],
-            default=['All'],
-            key=f"media_filter{key_suffix}",
-            help="Select media types to filter the toxicology data based on their measurement units"
-        )
-        selected_chemicals = st.multiselect(
-            "Select Chemicals from Database",
-            options=current_chemical_options,
-            key=f"selected_chemicals{key_suffix}",
-            help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
-        )
-        # Filter out the placeholder
-        selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
-        endpoint_type = st.radio(
-            "Endpoint Type", ('Acute (LC50, EC50)', 'Chronic (NOEC, LOEC, EC10)'), index=0,
-            key=f"endpoint_type{key_suffix}",
-            help="Select the general type of endpoint to include."
-        )
-        min_species = st.number_input(
-            "Minimum Number of Species", min_value=3, value=5, step=1,
-            key=f"min_species{key_suffix}",
-            help="Minimum unique species required after filtering."
-        )
-        required_taxa_broad = st.multiselect(
-            "Required Taxonomic Groups", options=list(TAXONOMIC_MAPPING.keys()), default=list(TAXONOMIC_MAPPING.keys())[:3],
-            key=f"required_taxa_broad{key_suffix}",
-            help="Select the broad taxonomic groups that *must* be represented."
-        )
-        data_handling = st.radio(
-            "Handle Multiple Values per Species", ('Use Geometric Mean', 'Use Most Sensitive (Minimum Value)'), index=0,
-            key=f"data_handling{key_suffix}",
-            help="How to aggregate multiple data points for the same species."
-        )
-# End of sidebar block
+        generate_button = st.button("🚀 Generate SSD", disabled=(not is_ready_to_generate))
 
 # All downstream logic should use the sidebar's uploaded_file, chemical_options, and selected_chemicals
 
