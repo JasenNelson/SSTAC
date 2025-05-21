@@ -785,7 +785,7 @@ if supabase_conn:
     # All chemical management UI is now in the sidebar.
     # [REMOVED: orphaned block after expander deletion]
     # All chemical management UI is now in the sidebar.
-
+    pass
 
 
 # Display all chemicals fetched from Supabase
