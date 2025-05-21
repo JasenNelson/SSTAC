@@ -904,17 +904,23 @@ with st.sidebar:
     if uploaded_file is not None:
         st.session_state.file_uploaded = True
         st.session_state.file_name = uploaded_file.name
+        st.session_state.file_object = uploaded_file  # Store the file object
     else:
         st.session_state.file_uploaded = False
         st.session_state.file_name = None
+        st.session_state.file_object = None
     
     # Handle file upload or database selection
     if st.session_state.get('file_uploaded', False):
         key_suffix = '_file'
         if st.session_state.get('last_uploaded_file') != st.session_state.file_name or st.session_state.file_processed_chem_list is None:
-            st.session_state.last_uploaded_file = st.session_state.file_name
-            with st.spinner("Reading chemical list..."):
-                st.session_state.file_processed_chem_list = get_chemical_options(uploaded_file)
+            if 'file_object' in st.session_state and st.session_state.file_object is not None:
+                st.session_state.last_uploaded_file = st.session_state.file_name
+                with st.spinner("Reading chemical list..."):
+                    st.session_state.file_processed_chem_list = get_chemical_options(st.session_state.file_object)
+            else:
+                st.warning("No file available for processing. Please upload a file first.")
+                st.session_state.file_processed_chem_list = []
         chemical_options = st.session_state.file_processed_chem_list or ["-- Error Reading File --"]
         # --- FILE UPLOADED: Show file-based workflow ---
         st.markdown("#### Chemical Selection (From Uploaded File)")
@@ -1113,10 +1119,15 @@ plot_area = st.container()
 
 if generate_button and is_ready_to_generate: # Check readiness flag
     try:
-        # Read the uploaded file AGAIN for full processing
-        # Reset file pointer just in case
-        st.session_state.last_uploaded_file.seek(0)
-        file_content = st.session_state.last_uploaded_file.getvalue()
+        # Get the file object from session state
+        if 'file_object' not in st.session_state or st.session_state.file_object is None:
+            st.error("No file available for processing. Please upload a file first.")
+            st.stop()
+            
+        # Reset file pointer and read content
+        file_obj = st.session_state.file_object
+        file_obj.seek(0)
+        file_content = file_obj.getvalue()
         df = None
         # Try CSV first
         try:
