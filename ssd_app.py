@@ -972,23 +972,23 @@ with st.sidebar:
             help="How to aggregate multiple data points for the same species."
         )
     else:
-    # --- NO FILE: Always show Supabase search/filter/fetch UI ---
-    st.markdown("#### Chemical Search and Filters (From Database)")
-    st.info("No file uploaded. The options below let you search and filter chemicals from the central database.")
-    key_suffix = '_supabase'
-    search_term = st.text_input(
-        "Search Toxicology Data",
-        key=f"chem_search{key_suffix}",
-        help="You can now search for any part of a chemical name (e.g., 'ace' will match 'Acetone'). Enter at least 3 characters."
-    )
-    if search_term and len(search_term.strip()) < 3:
-        st.warning("Please enter at least 3 characters to search any part of the chemical name.")
-        search_term = None
-    group_options = st.multiselect(
-        "Filter by Group",
-        options=["All"] + sorted(set([chem.get('group', 'Unknown') for chem in st.session_state.get('chemicals_data', [])])),
-        default=["All"],
-        key=f"group_filter{key_suffix}",
+        # --- NO FILE: Always show Supabase search/filter/fetch UI ---
+        st.markdown("#### Chemical Search and Filters (From Database)")
+        st.info("No file uploaded. The options below let you search and filter chemicals from the central database.")
+        key_suffix = '_supabase'
+        search_term = st.text_input(
+            "Search Toxicology Data",
+            key=f"chem_search{key_suffix}",
+            help="You can now search for any part of a chemical name (e.g., 'ace' will match 'Acetone'). Enter at least 3 characters."
+        )
+        if search_term and len(search_term.strip()) < 3:
+            st.warning("Please enter at least 3 characters to search any part of the chemical name.")
+            search_term = None
+        group_options = st.multiselect(
+            "Filter by Group",
+            options=["All"] + sorted(set([chem.get('group', 'Unknown') for chem in st.session_state.get('chemicals_data', [])])),
+            default=["All"],
+            key=f"group_filter{key_suffix}",
         help="Select chemical groups to filter the search results"
     )
     media_options = st.multiselect(
