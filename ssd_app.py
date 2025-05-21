@@ -805,6 +805,7 @@ if st.session_state.chemicals_loaded and st.session_state.chemicals_data:
     )
 
 # Show search results
+group_options = ['All']  # Ensure group_options is always defined
 if st.session_state.chemicals_loaded:
     # Filter by search term
     filtered_chems = st.session_state.chemicals_data
