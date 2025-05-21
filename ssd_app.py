@@ -966,8 +966,6 @@ with st.sidebar:
         # Filter out the placeholder
         selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
 
-            help="Select multiple chemicals by holding Ctrl/Cmd"
-        )
         valid_chem_names = [opt for opt in current_chemical_options if not opt.startswith('--') and opt.strip()]
         if len(valid_chem_names) == 0:
             st.warning("No valid chemical names found. Please check your file format.")
@@ -1024,8 +1022,6 @@ with st.sidebar:
         # Filter out the placeholder
         selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
 
-            help="Select multiple chemicals by holding Ctrl/Cmd"
-        )
         valid_chem_names = [opt for opt in current_chemical_options if not opt.startswith('--') and opt.strip()]
         if len(valid_chem_names) == 0:
             st.warning("No valid chemical names found. Please check your database or search/filter settings.")
