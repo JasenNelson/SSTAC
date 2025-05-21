@@ -671,20 +671,13 @@ def initialize_supabase_connection():
                 url=supabase_url,
                 key=supabase_key
             )
-            
-            # Test the connection
-            try:
-                # Try a simple query to test the connection
-                test_result = supabase_conn.table(TABLE_CHEMICALS).select("chemical_name").limit(1).execute()
-                if len(test_result.data) > 0:
-                    st.success("Successfully connected to Supabase!")
-                    return supabase_conn
-                else:
-                    raise ValueError("Supabase connection successful but toxicology_data table not found")
-            except Exception as e:
-                raise ValueError(f"Failed to test Supabase connection: {str(e)}")
+            # Test the connection with a simple query
+            test_result = supabase_conn.table("toxicology_data").select("id").limit(1).execute()
+            if not test_result.data:
+                raise ValueError("Connection successful but could not fetch test data")
+            return supabase_conn
         except Exception as e:
-            raise ValueError(f"Failed to create Supabase connection: {str(e)}")
+            raise ValueError(f"Failed to create or test Supabase connection: {str(e)}")
 
     except Exception as e:
         st.error(f"Failed to initialize Supabase connection: {str(e)}")
@@ -715,13 +708,13 @@ def fetch_chemicals(search_term=None):
     """
     try:
         # Use ilike for wildcard, case-insensitive search if search_term is provided
-        # Only select required columns and limit the number of records to avoid timeouts
+        # Only select required columns
         columns = "id, test_cas, chemical_name, species_scientific_name, species_common_name, species_group, endpoint, effect, conc1_mean, conc1_unit"
         query = supabase_conn.table("toxicology_data").select(columns)
         if search_term and search_term.strip():
             # Substring search using trigram index
             query = query.ilike("chemical_name", f"%{search_term.strip()}%")
-        query = query.limit(1000)
+        # Execute query without limit to get all matching records
         chemicals = query.execute()
         
         # Check if we got any data
@@ -1221,11 +1214,16 @@ if generate_button and is_ready_to_generate: # Check readiness flag
             columns={'aggregated_value': f'Toxicity Value ({data_unit})', 'broad_group': 'Taxonomic Group'}
         ).round(4))
 
-    # --- Keep Error Handling --- (Keep as is)
-    except pd.errors.ParserError as e: st.error(f"❌ File Parsing Error: {e}")
-    except KeyError as e: st.error(f"❌ Column Not Found Error: '{e}'. Check file header.")
-    except ValueError as e: st.error(f"❌ Value Error: {e}")
-    except Exception as e: st.error(f"❌ An unexpected error occurred: {e}"); st.exception(e)
+    # --- Error Handling ---
+    except pd.errors.ParserError as e:
+        st.error(f"❌ File Parsing Error: {e}")
+    except KeyError as e:
+        st.error(f"❌ Column Not Found Error: '{e}'. Check file header.")
+    except ValueError as e:
+        st.error(f"❌ Value Error: {e}")
+    except Exception as e:
+        st.error(f"❌ An unexpected error occurred: {e}")
+        st.exception(e)
 
 elif generate_button and not is_ready_to_generate:
     st.warning("⚠️ Please ensure a file is uploaded and a chemical is selected from the dropdown.")
