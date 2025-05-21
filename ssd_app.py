@@ -908,13 +908,25 @@ with st.sidebar:
         # --- FILE UPLOADED: Show file-based workflow ---
         st.markdown("#### Chemical Selection (From Uploaded File)")
         st.info("You have uploaded a file. The chemical selection and options below use only your uploaded data. To use the database, remove the file.")
-        current_chemical_options = chemical_options
+        
+        # Add 'Select All' option to the beginning of the list if there are options
+        if chemical_options and chemical_options != ["-- Error Reading File --"]:
+            current_chemical_options = ["Select All"] + chemical_options
+        else:
+            current_chemical_options = chemical_options
+            
         selected_chemicals = st.multiselect(
             "Select Chemicals from File",
             options=current_chemical_options,
             key="selected_chemicals_file",
-            help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
+            help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter. 'Select All' will choose all available chemicals."
         )
+        
+        # Handle 'Select All' functionality
+        if "Select All" in selected_chemicals:
+            selected_chemicals = [c for c in current_chemical_options if c != "Select All" and not c.startswith("--")]
+        else:
+            selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
     else:
         key_suffix = '_supabase'
         # --- DATABASE WORKFLOW: No file uploaded ---
