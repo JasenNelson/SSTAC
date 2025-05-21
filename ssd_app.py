@@ -900,6 +900,10 @@ with st.sidebar:
             help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
         )
         # Filter out the placeholder
+        # If 'Select All' is selected, select all chemicals except 'Select All' and placeholders
+    if "Select All" in selected_chemicals:
+        selected_chemicals = [c for c in current_chemical_options if c != "Select All" and not c.startswith("--")]
+    else:
         selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
         valid_chem_names = [opt for opt in current_chemical_options if not opt.startswith('--') and opt.strip()]
         if len(valid_chem_names) == 0:
@@ -941,47 +945,48 @@ with st.sidebar:
 
     else:
         # --- NO FILE: Always show Supabase search/filter/fetch UI ---
-        with st.sidebar:
-            st.markdown("#### Chemical Search and Filters (From Database)")
-            st.info("No file uploaded. The options below let you search and filter chemicals from the central database.")
-            key_suffix = '_supabase'
-            search_term = st.text_input(
-                "Search Toxicology Data",
-                key=f"chem_search{key_suffix}",
-                help="You can now search for any part of a chemical name (e.g., 'ace' will match 'Acetone'). Enter at least 3 characters."
-            )
-            if search_term and len(search_term.strip()) < 3:
-                st.warning("Please enter at least 3 characters to search any part of the chemical name.")
-                search_term = None
-            # Fetch button directly under search
-            if st.button("Fetch Toxicology Data from Supabase", key="fetch_chemicals_btn_sidebar"):
-                try:
-                    with st.spinner("Fetching chemical list from Supabase..."):
-                        if fetch_chemicals(search_term=search_term):
-                            st.success("Successfully fetched chemicals!")
-                except Exception as e:
-                    st.error(f"Failed to fetch records from toxicology_data: {str(e)}")
-                    st.exception(e)
-            group_options = st.multiselect(
-                "Filter by Group",
-                options=["All"] + sorted(set([chem.get('group', 'Unknown') for chem in st.session_state.get('chemicals_data', [])])),
-                default=["All"],
-                key=f"group_filter{key_suffix}",
-                help="Select chemical groups to filter the search results"
-            )
-            media_options = st.multiselect(
-                "Filter by Media",
-                options=['All', 'Water/Wastewater', 'Soil/Sediment', 'Air', 'Biota', 'Food'],
-                default=['All'],
-                key=f"media_filter{key_suffix}",
-                help="Select media types to filter the toxicology data based on their measurement units"
-            )
+        st.markdown("#### Chemical Search and Filters (From Database)")
+        st.info("No file uploaded. The options below let you search and filter chemicals from the central database.")
+        key_suffix = '_supabase'
+        search_term = st.text_input(
+            "Search Toxicology Data",
+            key=f"chem_search{key_suffix}",
+            help="You can now search for any part of a chemical name (e.g., 'ace' will match 'Acetone'). Enter at least 3 characters."
+        )
+        if search_term and len(search_term.strip()) < 3:
+            st.warning("Please enter at least 3 characters to search any part of the chemical name.")
+            search_term = None
+        # Fetch button directly under search
+        if st.button("Fetch Toxicology Data from Supabase", key="fetch_chemicals_btn_sidebar"):
+            try:
+                with st.spinner("Fetching chemical list from Supabase..."):
+                    if fetch_chemicals(search_term=search_term):
+                        st.success("Successfully fetched chemicals!")
+            except Exception as e:
+                st.error(f"Failed to fetch records from toxicology_data: {str(e)}")
+                st.exception(e)
+        group_options = st.multiselect(
+            "Filter by Group",
+            options=["All"] + sorted(set([chem.get('group', 'Unknown') for chem in st.session_state.get('chemicals_data', [])])),
+            default=["All"],
+            key=f"group_filter{key_suffix}",
+            help="Select chemical groups to filter the search results"
+        )
+        media_options = st.multiselect(
+            "Filter by Media",
+            options=['All', 'Water/Wastewater', 'Soil/Sediment', 'Air', 'Biota', 'Food'],
+            default=['All'],
+            key=f"media_filter{key_suffix}",
+            help="Select media types to filter the toxicology data based on their measurement units"
+        )
         # Define current_chemical_options for database workflow
     chem_df = pd.DataFrame(st.session_state.get('chemicals_data', []))
     if not chem_df.empty and 'chemical_name' in chem_df.columns:
-        current_chemical_options = ["-- Select Chemical --"] + chem_df['chemical_name'].dropna().astype(str).str.strip().unique().tolist()
-    else:
-        current_chemical_options = ["-- No Chemical Names Found --"]
+        raw_chem_options = chem_df['chemical_name'].dropna().astype(str).str.strip().unique().tolist()
+        if raw_chem_options:
+            current_chemical_options = ["Select All"] + raw_chem_options
+        else:
+            current_chemical_options = ["-- No Chemical Names Found --"]
 
 # --- Main instructions at the top of the main page ---
 st.markdown("## Upload a file or fetch chemicals from the database to begin.")
