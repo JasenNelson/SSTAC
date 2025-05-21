@@ -959,10 +959,12 @@ with st.sidebar:
         # --- FILE UPLOADED: Only show file-based workflow ---
         st.markdown("#### Chemical Selection (From Uploaded File)")
         st.info("You have uploaded a file. The chemical selection and options below use only your uploaded data. To use the database, remove the file.")
-{{ ... }}
-            key=f"selected_chemicals{key_suffix}",
-            help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
-        )
+selected_chemicals = st.multiselect(
+    "Select Chemicals from File",
+    options=current_chemical_options,
+    key=f"selected_chemicals{key_suffix}",
+    help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
+)
         # Filter out the placeholder
         selected_chemicals = [c for c in selected_chemicals if c != "-- Select Chemical --"]
         valid_chem_names = [opt for opt in current_chemical_options if not opt.startswith('--') and opt.strip()]
