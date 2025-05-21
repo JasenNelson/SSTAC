@@ -974,10 +974,9 @@ with st.sidebar:
         is_ready_to_generate = (
             uploaded_file is not None and
             selected_chemicals and
-    help="Select chemical groups to filter the search results"
-)
-media_options = st.multiselect(
-    "Filter by Media",
+            all([c not in (None, "-- Upload File First --", "-- Error Reading File --") for c in selected_chemicals])
+        )
+
     options=['All', 'Water/Wastewater', 'Soil/Sediment', 'Air', 'Biota', 'Food'],
     default=['All'],
     key=f"media_filter{key_suffix}",
