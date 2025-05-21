@@ -988,13 +988,25 @@ if not chem_df.empty and 'chemical_name' in chem_df.columns:
     else:
         current_chemical_options = ["-- No Chemical Names Found --"]
 
-# Sidebar widget for chemical selection
-selected_chemicals = st.sidebar.multiselect(
-    "Select Chemicals",
-    options=current_chemical_options,
-    default=[],
-    key="chemical_select"
-)
+# Ensure selected_chemicals is always defined with unique keys per workflow
+selected_chemicals = []
+
+if 'uploaded_file' in locals() and uploaded_file:
+    # File-upload workflow
+    selected_chemicals = st.sidebar.multiselect(
+        "Select Chemicals",
+        options=current_chemical_options,
+        default=[],
+        key="chemical_select_file"
+    )
+else:
+    # Database workflow
+    selected_chemicals = st.sidebar.multiselect(
+        "Select Chemicals",
+        options=current_chemical_options,
+        default=[],
+        key="chemical_select_db"
+    )
 
 # --- Main instructions at the top of the main page ---
 st.markdown("## Upload a file or fetch chemicals from the database to begin.")
