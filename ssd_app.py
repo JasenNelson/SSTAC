@@ -56,7 +56,8 @@ def initialize_supabase_connection():
                 source = "environment variables"
         # Debug info (mask key)
         if supabase_url and supabase_key:
-            st.info("Using Supabase credentials from " + source)
+            pass
+
         # If still missing, error
         if not supabase_url or not supabase_key:
             st.error("Supabase configuration not found. Please add your credentials to Streamlit secrets or environment variables.")
@@ -864,13 +865,6 @@ if st.session_state.chemicals_loaded:
     chem_count = len(st.session_state.chemicals_data)
     st.write(f"Total unique chemicals in database: {chem_count}")
 
-st.markdown("""
-Upload your **processed** ecotoxicity data file (e.g., a `.csv` containing the required columns:
-`test_cas`, `chemical_name`, `species_scientific_name`, `species_common_name`, `species_group`,
-`endpoint`, `effect`, `conc1_mean`, `conc1_unit`). Select the chemical from the dropdown and
-configure parameters to generate the SSD.
-""")
-
 # --- Initialize Session State ---
 # Use session state to prevent resetting dropdown when other widgets change
 if 'selected_chemicals' not in st.session_state:
@@ -1030,7 +1024,17 @@ if uploaded_file is not None:
         help="How to aggregate multiple data points for the same species."
     )
 else:
-        st.info("Upload a file or fetch chemicals from the database to begin.")
+        # --- Main instructions at the top of the main page ---
+        st.markdown("## Upload a file or fetch chemicals from the database to begin.")
+        st.markdown(
+            "Upload a file using the sidebar to populate the chemical list and enable analysis."
+        )
+        st.markdown("""
+Upload your **processed** ecotoxicity data file (e.g., a `.csv` containing the required columns:
+`test_cas`, `chemical_name`, `species_scientific_name`, `species_common_name`, `species_group`,
+`endpoint`, `effect`, `conc1_mean`, `conc1_unit`). Select the chemical from the dropdown and
+configure parameters to generate the SSD.
+""")
         # Always show these options so distribution_fit and hcp_percentile are defined
         distribution_fit = st.selectbox(
             "Distribution for Fitting", ('Log-Normal', 'Log-Logistic'), index=0,
