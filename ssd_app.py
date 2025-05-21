@@ -880,6 +880,7 @@ generate_button = False
 # --- Sidebar: Single source of truth for file upload and chemical selection ---
 selected_chemicals = []  # Always define before use
 current_chemical_options = []  # Always define before use
+key_suffix = ""  # Always define before use
 with st.sidebar:
     uploaded_file = st.file_uploader("Import CSV or TXT", type=["csv", "txt"], help="Upload your chemical data file.", key="file_upload")
     st.markdown("---")
@@ -895,6 +896,12 @@ with st.sidebar:
         st.markdown("#### Chemical Selection (From Uploaded File)")
         st.info("You have uploaded a file. The chemical selection and options below use only your uploaded data. To use the database, remove the file.")
         current_chemical_options = chemical_options
+        selected_chemicals = st.multiselect(
+            "Select Chemicals from File",
+            options=current_chemical_options,
+            key="selected_chemicals_file",
+            help="Hold Ctrl/Cmd or use checkboxes to select multiple chemicals. Start typing to filter."
+        )
     else:
         key_suffix = '_supabase'
         # --- DATABASE WORKFLOW: No file uploaded ---
@@ -907,23 +914,6 @@ with st.sidebar:
                 current_chemical_options = ["-- No Chemical Names Found --"]
         else:
             current_chemical_options = ["-- No Chemical Names Found --"]
-        # Place all database widgets in the sidebar
-        search_term = st.text_input(
-            "Search Toxicology Data",
-            key=f"chem_search{key_suffix}",
-            help="You can now search for any part of a chemical name (e.g., 'ace' will match 'Acetone'). Enter at least 3 characters."
-        )
-        if search_term and len(search_term.strip()) < 3:
-            st.warning("Please enter at least 3 characters to search any part of the chemical name.")
-            search_term = None
-        if st.button("Fetch Toxicology Data from Supabase", key="fetch_chemicals_btn_sidebar"):
-            try:
-                with st.spinner("Fetching chemical list from Supabase..."):
-                    if fetch_chemicals(search_term=search_term):
-                        st.success("Successfully fetched chemicals!")
-            except Exception as e:
-                st.error(f"Failed to fetch records from toxicology_data: {str(e)}")
-                st.exception(e)
         group_options = st.multiselect(
             "Filter by Group",
             options=["All"] + sorted(set([chem.get('group', 'Unknown') for chem in st.session_state.get('chemicals_data', [])])),
