@@ -636,66 +636,73 @@ def initialize_supabase_connection():
     Returns:
         Supabase client or None if connection fails
     """
-    supabase_url = None
-    supabase_key = None
+    import sys
+    from pathlib import Path
+    
+    # Debug: Print current working directory
+    st.sidebar.write(f"Current directory: {Path.cwd()}")
     
     # Method 1: Try .env file first
-    load_dotenv(override=True)  # Load .env file if it exists
-    supabase_url = os.getenv('SUPABASE_URL')
-    supabase_key = os.getenv('SUPABASE_KEY')
+    env_path = Path(__file__).parent / '.env'
+    st.sidebar.write(f"Looking for .env at: {env_path}")
     
-    if supabase_url and supabase_key:
-        st.sidebar.success("Using credentials from .env file")
-    else:
-        # Method 2: Try Streamlit secrets
+    if env_path.exists():
         try:
-            supabase_url = st.secrets.get("SUPABASE_URL")
-            supabase_key = st.secrets.get("SUPABASE_KEY")
+            load_dotenv(env_path, override=True)
+            supabase_url = os.getenv('SUPABASE_URL')
+            supabase_key = os.getenv('SUPABASE_KEY')
+            
             if supabase_url and supabase_key:
-                st.sidebar.success("Using credentials from Streamlit secrets")
+                st.sidebar.success("✅ Successfully loaded credentials from .env file")
+                st.sidebar.write(f"URL: {supabase_url[:20]}...")
+                return _create_supabase_client(supabase_url, supabase_key)
+            else:
+                st.sidebar.error("❌ .env file exists but is missing SUPABASE_URL or SUPABASE_KEY")
         except Exception as e:
-            st.sidebar.warning("No Streamlit secrets found, using .env file instead")
+            st.sidebar.error(f"❌ Error reading .env file: {str(e)}")
+    else:
+        st.sidebar.warning("⚠️ .env file not found in project root")
     
-    # Method 3: Manual input as fallback
-    if not (supabase_url and supabase_key):
-        st.sidebar.warning("Credentials not found in .env or Streamlit secrets")
-        if st.sidebar.toggle('Enter Supabase credentials manually', False):
-            with st.sidebar.expander("Supabase Credentials", expanded=True):
-                supabase_url = st.text_input("Supabase URL", key="sb_url")
-                supabase_key = st.text_input("Supabase Key", type="password", key="sb_key")
+    # Method 2: Try Streamlit secrets (for Streamlit Cloud)
+    try:
+        supabase_url = st.secrets.get("SUPABASE_URL")
+        supabase_key = st.secrets.get("SUPABASE_KEY")
+        if supabase_url and supabase_key:
+            st.sidebar.success("✅ Using credentials from Streamlit secrets")
+            return _create_supabase_client(supabase_url, supabase_key)
+    except Exception as e:
+        st.sidebar.warning("ℹ️ No Streamlit secrets found")
     
-    # If we still don't have credentials, show error and stop
-    if not (supabase_url and supabase_key):
-        st.sidebar.error("""
-            Supabase credentials not found. Please:
-            1. Create a `.env` file in the project root with:
-               ```
-               SUPABASE_URL=your_project_url
-               SUPABASE_KEY=your_anon_key
-               ```
-            2. Or enter them manually using the toggle above
-        """)
-        return None
+    # Method 3: Manual input
+    st.sidebar.warning("⚠️ Using manual credentials input")
+    with st.sidebar.expander("Enter Supabase Credentials", expanded=True):
+        supabase_url = st.text_input("Supabase URL", key="sb_url")
+        supabase_key = st.text_input("Supabase Key", type="password", key="sb_key")
+        if st.button("Connect"):
+            if supabase_url and supabase_key:
+                return _create_supabase_client(supabase_url, supabase_key)
+            else:
+                st.error("Please enter both URL and Key")
     
-    # Try to initialize the client and test the connection
+    return None
+
+def _create_supabase_client(url: str, key: str):
+    """Helper function to create and test Supabase client"""
     try:
         from supabase import create_client
-        supabase_conn = create_client(supabase_url, supabase_key)
-        
-        # Test the connection with a simple query
-        test = supabase_conn.table('toxicology_data').select('*').limit(1).execute()
-        
+        client = create_client(url, key)
+        # Test the connection
+        test = client.table('toxicology_data').select('*').limit(1).execute()
         if hasattr(test, 'error') and test.error:
-            st.sidebar.error(f"Supabase connection failed: {test.error}")
+            st.sidebar.error(f"❌ Connection test failed: {test.error}")
             return None
-            
-        st.sidebar.success("✅ Successfully connected to Supabase")
-        return supabase_conn
-        
+        st.sidebar.success("✅ Successfully connected to Supabase!")
+        return client
     except Exception as e:
-        st.sidebar.error(f"Error connecting to Supabase: {str(e)}")
-        st.sidebar.info("Please verify your Supabase URL and key are correct")
+        st.sidebar.error(f"❌ Error creating Supabase client: {str(e)}")
         return None
+    
+
 
 # Initialize session state
 if 'chemicals_loaded' not in st.session_state:
