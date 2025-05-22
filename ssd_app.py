@@ -1,8 +1,24 @@
 # File updated to trigger commit (no functional change)
 import streamlit as st 
+import re
+import logging
 
 # --- Table Name Constants ---
 TABLE_CHEMICALS = "toxicology_data"
+
+def validate_input(text, max_length=100, allowed_chars=r'[^a-zA-Z0-9\s\-_,.]'):
+    """
+    Validate and sanitize user input to prevent injection attacks.
+    Returns sanitized text or raises ValueError if invalid.
+    """
+    if not text or not isinstance(text, str):
+        return ""
+    text = text.strip()
+    if len(text) > max_length:
+        raise ValueError(f"Input too long. Maximum {max_length} characters allowed.")
+    if re.search(allowed_chars, text):
+        raise ValueError("Invalid characters in input. Only letters, numbers, spaces, hyphens, underscores, periods, and commas are allowed.")
+    return text
 
 import pandas as pd
 import numpy as np
@@ -610,7 +626,6 @@ def get_chemical_names(df_chem, chem_col):
         st.error(f"Error reading file for chemical list: {e}")
         return ["-- Error Reading File --"]
 
-
 def initialize_supabase_connection():
     """Initialize and test Supabase connection with proper error handling.
     Returns:
@@ -666,37 +681,40 @@ if supabase_conn is None:
     st.stop()
 
 def fetch_chemicals(search_term=None):
+    """Fetch chemicals from Supabase and process them."""
     chemical_groups = {}
     chem_data = []
-    if not search_term or not search_term.strip():
-        st.warning("Please enter a search term to fetch chemicals. Fetching all records is disabled to avoid timeouts.")
-        st.session_state.chemical_groups = chemical_groups  # Always set in session state
-        return False
-    """Fetch chemicals from Supabase and process them.
     
-
-    """
     try:
-        # Use ilike for wildcard, case-insensitive search if search_term is provided
-        # Only select required columns
-        columns = "id, test_cas, chemical_name, species_scientific_name, species_common_name, species_group, endpoint, effect, conc1_mean, conc1_unit"
-        query = supabase_conn.table("toxicology_data").select(columns)
-        if search_term and search_term.strip():
-            # Substring search using trigram index
-            query = query.ilike("chemical_name", f"%{search_term.strip()}%")
-        # Execute query without limit to get all matching records
-        chemicals = query.execute()
+        # Validate search term if provided
+        if search_term:
+            try:
+                search_term = validate_input(search_term)
+                logging.info(f"Searching for: {search_term}")
+            except ValueError as e:
+                st.warning(str(e))
+                return False
+                
+        if not search_term or not search_term.strip():
+            st.warning("Please enter a search term to fetch chemicals. Fetching all records is disabled to avoid timeouts.")
+            st.session_state.chemical_groups = chemical_groups
+            return False
+
+        # Use parameterized query with ilike
+        query = supabase_conn.table("toxicology_data").select("*")
+        query = query.ilike("chemical_name", f"%{search_term}%")
         
-        # Check if we got any data
-        if not chemicals.data:
-            st.error("No records found in the toxicology_data table")
+        # Execute the query
+        result = query.execute()
+        
+        # Process query results
+        if not result.data:
+            st.error("No records found matching your search criteria.")
             st.session_state.chemical_groups = chemical_groups
             return False
             
-        # Convert to DataFrame
-        df = pd.DataFrame(chemicals.data)
+        df = pd.DataFrame(result.data)
         
-
         # Display grouped summary by chemical_name
         grouped = df.groupby('chemical_name').size().reset_index(name='count')
         st.write('Grouped Results by Chemical Name:')
@@ -730,6 +748,7 @@ def fetch_chemicals(search_term=None):
             chemical_groups = df['group'].value_counts().to_dict()
         else:
             chemical_groups = {}
+            
         st.session_state.chemical_groups = chemical_groups
 
         # Store in session state
@@ -737,19 +756,12 @@ def fetch_chemicals(search_term=None):
         st.session_state.chemicals_loaded = True
         
         return True
+        
     except Exception as e:
-        st.error(f"Failed to fetch records from toxicology_data: {str(e)}")
-        st.session_state.chemical_groups = chemical_groups  # Ensure always defined
-        st.exception(e)
+        st.error("An error occurred while searching the database. Please try again.")
+        logging.error(f"Database search error: {str(e)}")
+        st.session_state.chemical_groups = {}
         return False
-
-# Using pre-initialized Supabase connection from initialization section
-if supabase_conn:
-    # [REMOVED: Legacy main-panel chemical management expander]
-    # All chemical management UI is now in the sidebar.
-    # [REMOVED: orphaned block after expander deletion]
-    # All chemical management UI is now in the sidebar.
-    pass
 
 
 # Display all chemicals fetched from Supabase
@@ -850,15 +862,23 @@ with st.sidebar:
     search_term = st.text_input(
         "Search chemicals by name or CAS number",
         key="search_term",
-        help="Enter part of a chemical name or CAS number to search the database"
+        help="Enter part of a chemical name or CAS number to search the database. Only letters, numbers, spaces, hyphens, underscores, periods, and commas are allowed.",
+        max_chars=100  # Prevent extremely long searches
     )
     
-    if st.button("Search", key="search_button"):
+    # Add search button with better feedback
+    if st.button("Search", key="search_button", help="Search for chemicals in the database"):
         with st.spinner("Searching database..."):
             if search_term and search_term.strip():
-                fetch_chemicals(search_term)
+                try:
+                    # This will now use our secure fetch_chemicals function with input validation
+                    if fetch_chemicals(search_term):
+                        st.success("Search completed successfully!")
+                except Exception as e:
+                    st.error(f"An error occurred during the search: {str(e)}")
+                    logging.error(f"Search error: {str(e)}")
             else:
-                st.warning("Please enter a search term")
+                st.warning("Please enter a search term to search the database")
     
     # Chemical management section
     st.markdown("---")
