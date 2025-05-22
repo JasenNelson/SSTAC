@@ -629,20 +629,37 @@ def get_chemical_names(df_chem, chem_col):
 def initialize_supabase_connection():
     """Initialize and test Supabase connection with proper error handling.
     Tries to get credentials in this order:
-    1. From .env file
-    2. From Streamlit secrets
+    1. From Streamlit secrets (both formats)
+    2. From .env file
     3. From manual input (as a fallback)
     
     Returns:
         Supabase client or None if connection fails
     """
-    import sys
     from pathlib import Path
     
-    # Debug: Print current working directory
+    # Debug info
     st.sidebar.write(f"Current directory: {Path.cwd()}")
     
-    # Method 1: Try .env file first
+    # Method 1: Try Streamlit secrets (new format)
+    try:
+        # Try direct keys first
+        supabase_url = st.secrets.get('supabase', {}).get('url')
+        supabase_key = st.secrets.get('supabase', {}).get('anon_key')
+        
+        # If not found, try connections.supabase format
+        if not (supabase_url and supabase_key):
+            supabase_url = st.secrets.get('connections', {}).get('supabase', {}).get('url')
+            supabase_key = st.secrets.get('connections', {}).get('supabase', {}).get('key')
+        
+        if supabase_url and supabase_key:
+            st.sidebar.success("✅ Using credentials from Streamlit secrets")
+            return _create_supabase_client(supabase_url, supabase_key)
+            
+    except Exception as e:
+        st.sidebar.warning(f"ℹ️ No Streamlit secrets found: {str(e)}")
+    
+    # Method 2: Try .env file
     env_path = Path(__file__).parent / '.env'
     st.sidebar.write(f"Looking for .env at: {env_path}")
     
@@ -657,21 +674,9 @@ def initialize_supabase_connection():
                 st.sidebar.write(f"URL: {supabase_url[:20]}...")
                 return _create_supabase_client(supabase_url, supabase_key)
             else:
-                st.sidebar.error("❌ .env file exists but is missing SUPABASE_URL or SUPABASE_KEY")
+                st.sidebar.warning("ℹ️ .env file exists but is missing SUPABASE_URL or SUPABASE_KEY")
         except Exception as e:
             st.sidebar.error(f"❌ Error reading .env file: {str(e)}")
-    else:
-        st.sidebar.warning("⚠️ .env file not found in project root")
-    
-    # Method 2: Try Streamlit secrets (for Streamlit Cloud)
-    try:
-        supabase_url = st.secrets.get("SUPABASE_URL")
-        supabase_key = st.secrets.get("SUPABASE_KEY")
-        if supabase_url and supabase_key:
-            st.sidebar.success("✅ Using credentials from Streamlit secrets")
-            return _create_supabase_client(supabase_url, supabase_key)
-    except Exception as e:
-        st.sidebar.warning("ℹ️ No Streamlit secrets found")
     
     # Method 3: Manual input
     st.sidebar.warning("⚠️ Using manual credentials input")
