@@ -634,39 +634,56 @@ def initialize_supabase_connection():
     try:
         # First try to get credentials from Streamlit secrets (for Streamlit Cloud)
         supabase_config = st.secrets.get("connections", {}).get("supabase", {})
-        
-        # Get URL and key from config
-        supabase_url = supabase_config.get("url")
-        supabase_key = supabase_config.get("key") # anon_key
-        
-        # If not found in secrets, try environment variables (for local development)
-        if not supabase_url or not supabase_key:
-            # Try environment variables
-            supabase_url = os.getenv("SUPABASE_URL")
-            supabase_key = os.getenv("SUPABASE_KEY")
-
-        if not supabase_url or not supabase_key:
-            raise ValueError("Supabase configuration not found. Please configure your credentials in Streamlit secrets or environment variables.")
-
-        # Create Supabase connection
         try:
-            supabase_conn = st.connection(
-                "supabase",
-                type=SupabaseConnection,
-                url=supabase_url,
-                key=supabase_key
-            )
+            supabase_url = st.secrets.get("SUPABASE_URL")
+            supabase_key = st.secrets.get("SUPABASE_KEY")
+            if supabase_url and supabase_key:
+                st.success("Using credentials from Streamlit secrets")
+        except Exception:
+            supabase_url = None
+            supabase_key = None
+        
+        # Method 2: Try environment variables
+        if not (supabase_url and supabase_key):
+            load_dotenv()  # Load .env file if it exists
+            supabase_url = os.getenv('SUPABASE_URL')
+            supabase_key = os.getenv('SUPABASE_KEY')
+            if supabase_url and supabase_key:
+                st.success("Using credentials from environment variables")
+        
+        # Method 3: Prompt for credentials (for testing only)
+        if not (supabase_url and supabase_key) and st.toggle('Enter Supabase credentials manually', False):
+            with st.expander("Supabase Credentials"):
+                supabase_url = st.text_input("Supabase URL", key="sb_url")
+                supabase_key = st.text_input("Supabase Key", type="password", key="sb_key")
+        
+        if not (supabase_url and supabase_key):
+            st.error("Supabase credentials not found. Please check your .env file or Streamlit secrets.")
+            st.info("For local development, create a .env file with SUPABASE_URL and SUPABASE_KEY")
+            return None
+            
+        # Initialize the client
+        try:
+            supabase_conn = create_client(supabase_url, supabase_key)
+            
             # Test the connection with a simple query
-            test_result = supabase_conn.table("toxicology_data").select("id").limit(1).execute()
-            if not test_result.data:
-                raise ValueError("Connection successful but could not fetch test data")
+            test = supabase_conn.table('toxicology_data').select('*').limit(1).execute()
+            
+            if hasattr(test, 'error') and test.error:
+                st.error(f"Supabase connection test failed: {test.error}")
+                return None
+                
+            st.success("Successfully connected to Supabase!")
             return supabase_conn
+            
         except Exception as e:
-            raise ValueError(f"Failed to create or test Supabase connection: {str(e)}")
-
+            st.error(f"Error connecting to Supabase: {str(e)}")
+            st.info("Please verify your Supabase URL and key are correct")
+            return None
+            
     except Exception as e:
-        st.error(f"Failed to initialize Supabase connection: {str(e)}")
-        raise e
+        st.error(f"Failed to initialize Supabase client: {str(e)}")
+        return None
 
 # Initialize session state
 if 'chemicals_loaded' not in st.session_state:
