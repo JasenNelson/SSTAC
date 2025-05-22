@@ -6,4 +6,4 @@ supabase==2.15.1
 python-dotenv==1.0.0
 pint==0.24.1
 st-supabase-connection==2.0.1
-scipy>=1.10.0
+scipy>=1.15.3
