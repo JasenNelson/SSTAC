@@ -836,14 +836,18 @@ if st.session_state.chemicals_loaded:
         st.write(f"Found {len(filtered_chems)} matching chemicals:")
         chem_df = pd.DataFrame(filtered_chems)
         
-        # Add multi-select for chemicals
+        # Get unique chemical names and sort them
+        unique_chemicals = sorted(chem_df['chemical_name'].unique().tolist())
+        
+        # Add multi-select for chemicals with unique names
         selected_chemicals = st.multiselect(
             "Select Chemicals",
-            options=chem_df['chemical_name'].tolist(),
-            help="Select multiple chemicals by holding Ctrl/Cmd"
+            options=unique_chemicals,
+            help="Select one or more chemicals"
         )
     else:
         st.info("No chemicals found matching your search.")
+        selected_chemicals = []
 
     if selected_chemicals:
         # Show selected chemicals
