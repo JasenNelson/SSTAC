@@ -755,12 +755,7 @@ def fetch_chemicals(search_term=None):
             return False
             
         df = pd.DataFrame(result.data)
-        
-        # Display grouped summary by chemical_name
-        grouped = df.groupby('chemical_name').size().reset_index(name='count')
-        st.write('Grouped Results by Chemical Name:')
-        st.dataframe(grouped)
-        
+              
         # Add chemical group column
         if 'chemical_name' in df.columns:
             df['group'] = df['chemical_name'].apply(get_chemical_group)
@@ -795,7 +790,6 @@ def fetch_chemicals(search_term=None):
         # Store in session state
         st.session_state.chemicals_data = df.to_dict('records')
         st.session_state.chemicals_loaded = True
-        
         return True
         
     except Exception as e:
@@ -804,28 +798,11 @@ def fetch_chemicals(search_term=None):
         st.session_state.chemical_groups = {}
         return False
 
-
-# Display all chemicals fetched from Supabase
-if st.session_state.chemicals_loaded and st.session_state.chemicals_data:
-    st.write("### Chemicals Fetched from Supabase")
-    chem_df = pd.DataFrame(st.session_state.chemicals_data)
-    st.dataframe(chem_df, hide_index=True)
-    # Add download button for full fetched data
-    csv = chem_df.to_csv(index=False)
-    st.download_button(
-        label="Download All Fetched Data as CSV",
-        data=csv,
-        file_name="supabase_chemical_data.csv",
-        mime="text/csv",
-        key="download_supabase_chemicals_csv"
-    )
-
-# Show search results
+# Show search results in main content area
 group_options = ['All']  # Ensure group_options is always defined
 if st.session_state.chemicals_loaded:
     # Filter by search term
     filtered_chems = st.session_state.chemicals_data
-
     
     # Filter by groups
     if 'All' not in group_options:
@@ -836,6 +813,9 @@ if st.session_state.chemicals_loaded:
         st.write(f"Found {len(filtered_chems)} matching chemicals:")
         chem_df = pd.DataFrame(filtered_chems)
         
+        # Show the data frame in main content area
+        st.dataframe(chem_df, hide_index=True)
+        
         # Get unique chemical names and sort them
         unique_chemicals = sorted(chem_df['chemical_name'].unique().tolist())
         
@@ -845,12 +825,9 @@ if st.session_state.chemicals_loaded:
             options=unique_chemicals,
             help="Select one or more chemicals"
         )
-    else:
-        st.info("No chemicals found matching your search.")
-        selected_chemicals = []
-
-    if selected_chemicals:
-        # Show selected chemicals
+        
+        if selected_chemicals:
+            # Show selected chemicals
             selected_df = chem_df[chem_df['chemical_name'].isin(selected_chemicals)]
             st.write("Selected Chemicals:")
             st.dataframe(selected_df, hide_index=True)
@@ -878,8 +855,8 @@ if st.session_state.chemicals_loaded:
                         mime="text/csv",
                         key="download_complete_csv_1"
                     )
-else:
-    st.info("No chemicals found matching your filters.")
+    else:
+        st.info("No chemicals found matching your search.")
 
 # Add chemical count 
 if st.session_state.chemicals_loaded:
@@ -913,17 +890,16 @@ with st.sidebar:
     
     # Add search button with better feedback
     if st.button("Search", key="search_button", help="Search for chemicals in the database"):
-        with st.spinner("Searching database..."):
-            if search_term and search_term.strip():
+        if search_term and search_term.strip():
+            with st.spinner("Searching database..."):
                 try:
-                    # This will now use our secure fetch_chemicals function with input validation
                     if fetch_chemicals(search_term):
-                        st.success("Search completed successfully!")
+                        st.rerun()  # Force a rerun to show results immediately
                 except Exception as e:
                     st.error(f"An error occurred during the search: {str(e)}")
                     logging.error(f"Search error: {str(e)}")
-            else:
-                st.warning("Please enter a search term to search the database")
+        else:
+            st.warning("Please enter a search term")
     
     # Chemical management section
     st.markdown("---")
