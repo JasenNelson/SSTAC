@@ -355,8 +355,22 @@ with st.sidebar:
     )
     
     st.subheader("4. Protection & Safety")
-    apply_protection_clause = st.checkbox("Apply Protection Clause", value=True)
-    hcp_percentile = st.number_input("Hazard Concentration (HCp) Percentile", min_value=1.0, max_value=50.0, value=5.0, step=0.5, format="%.1f")
+    apply_protection_clause = st.checkbox("Apply Protection Clause", value=True, 
+                                      help="Applies an additional safety factor based on data quality and quantity")
+    
+    with st.expander("ℹ️ About Protection Clause"):
+        st.markdown("""
+        The Protection Clause applies additional safety factors when:
+        - Fewer than 15 species are available
+        - Key taxonomic groups are missing
+        - Data quality is limited
+        
+        This follows CCME guidelines to ensure conservative estimates when data is limited.
+        """)
+        
+    hcp_percentile = st.number_input("Hazard Concentration (HCp) Percentile", 
+                                     min_value=1.0, max_value=50.0, value=5.0, 
+                                     step=0.5, format="%.1f")
 
     generate_button = st.button("Generate SSD", type="primary", use_container_width=True)
 
