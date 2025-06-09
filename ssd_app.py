@@ -2,6 +2,102 @@
 import streamlit as st 
 import re
 import logging
+import os
+import sys
+import warnings
+from functools import wraps
+
+# Completely disable all warnings
+warnings.filterwarnings('ignore')
+warnings.simplefilter('ignore')
+
+# Set environment variables to suppress Supabase messages
+os.environ['SUPABASE_DEBUG'] = '0'
+os.environ['SUPABASE_VERBOSE_ERRORS'] = '0'
+os.environ['PYTHONUNBUFFERED'] = '1'
+os.environ['PYTHONIOENCODING'] = 'utf-8'
+
+# Configure logging to suppress all logs
+logging.basicConfig(
+    level=logging.CRITICAL,
+    format='',
+    handlers=[logging.NullHandler()]
+)
+logging.disable(logging.CRITICAL)
+
+# Suppress all loggers
+for logger_name in logging.root.manager.loggerDict:
+    logging.getLogger(logger_name).handlers = []
+    logging.getLogger(logger_name).addHandler(logging.NullHandler())
+    logging.getLogger(logger_name).propagate = False
+    logging.getLogger(logger_name).setLevel(logging.CRITICAL)
+
+# Redirect stdout and stderr to /dev/null
+sys.stdout = open(os.devnull, 'w')
+sys.stderr = open(os.devnull, 'w')
+
+# Function to temporarily restore stdout/stderr for Streamlit
+def restore_output():
+    sys.stdout = sys.__stdout__
+    sys.stderr = sys.__stderr__
+
+# Restore output for Streamlit
+restore_output()
+
+# Save original print
+_original_print = print
+_original_stdout = sys.stdout
+_original_stderr = sys.stderr
+
+class SuppressOutput:
+    def __enter__(self):
+        self.stdout = sys.stdout
+        self.stderr = sys.stderr
+        sys.stdout = open(os.devnull, 'w')
+        sys.stderr = open(os.devnull, 'w')
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if sys.stdout != sys.__stdout__:  # Only close if it's our file
+            sys.stdout.close()
+        if sys.stderr != sys.__stderr__:
+            sys.stderr.close()
+        sys.stdout = self.stdout
+        sys.stderr = self.stderr
+        return False
+
+def suppress_output(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        with SuppressOutput():
+            return func(*args, **kwargs)
+    return wrapper
+
+# Apply suppression to print
+print = suppress_output(print)
+
+# Configure logging to suppress unwanted messages
+logging.basicConfig(
+    level=logging.ERROR,  # Only show ERROR and above
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.NullHandler()]  # Don't output any logs
+)
+
+# Suppress all loggers
+for logger_name in logging.root.manager.loggerDict:
+    logging.getLogger(logger_name).addHandler(logging.NullHandler())
+    logging.getLogger(logger_name).propagate = False
+    logging.getLogger(logger_name).setLevel(logging.CRITICAL)
+
+# Disable debug logging for supabase
+os.environ['SUPABASE_DEBUG'] = 'false'
+os.environ['SUPABASE_VERBOSE_ERRORS'] = 'false'
+os.environ['PYTHONUNBUFFERED'] = '1'
+
+# Suppress warnings
+import warnings
+warnings.filterwarnings('ignore')
+warnings.simplefilter('ignore')
 
 # --- Table Name Constants ---
 TABLE_CHEMICALS = "toxicology_data"
@@ -25,6 +121,7 @@ import numpy as np
 import plotly.graph_objects as go
 from scipy.stats import norm
 from io import StringIO
+from typing import Tuple, Dict, Optional, Union
 import supabase
 from st_supabase_connection import SupabaseConnection
 import plotly.express as px
@@ -38,57 +135,67 @@ load_dotenv()
 st.set_page_config(layout="wide")
 
 
+@st.cache_resource(show_spinner=False)
 def initialize_supabase_connection():
     """Initialize and test Supabase connection with proper error handling.
     Returns:
         Supabase client: The initialized Supabase connection or None if failed
     """
+    # Save current stdout/stderr
+    old_stdout = sys.stdout
+    old_stderr = sys.stderr
+    
     try:
-        supabase_url = None
-        supabase_key = None
-        source = None
-        # 1. Try Streamlit secrets [connections.supabase]
-        if hasattr(st, "secrets"):
-            connections_supabase = st.secrets.get("connections", {}).get("supabase", {})
-            if connections_supabase.get("url") and connections_supabase.get("key"):
-                supabase_url = connections_supabase.get("url")
-                supabase_key = connections_supabase.get("key")
-                source = "[connections.supabase]"
-        # 2. Try Streamlit secrets [supabase]
-        if (not supabase_url or not supabase_key) and hasattr(st, "secrets"):
-            supabase_secrets = st.secrets.get("supabase", {})
-            if supabase_secrets.get("url") and supabase_secrets.get("anon_key"):
-                supabase_url = supabase_secrets.get("url")
-                supabase_key = supabase_secrets.get("anon_key")
-                source = "[supabase]"
-        # 3. Try environment variables
-        if (not supabase_url or not supabase_key):
-            import os
-            env_url = os.environ.get("SUPABASE_URL")
-            env_key = os.environ.get("SUPABASE_KEY")
-            if env_url and env_key:
-                supabase_url = env_url
-                supabase_key = env_key
-                source = "environment variables"
-        # Debug info (mask key)
-        if supabase_url and supabase_key:
-            pass
-
-        # If still missing, error
-        if not supabase_url or not supabase_key:
-            st.error("Supabase configuration not found. Please add your credentials to Streamlit secrets or environment variables.")
-            st.error("Checked sources in order: [connections.supabase], [supabase], environment variables.")
-            st.error("Example [supabase] section in .streamlit/secrets.toml:")
-            st.code("""[supabase]\nurl = \"https://your-project.supabase.co\"\nanon_key = \"your-anon-key-here\"\n""", language="toml")
-            st.error("Example [connections.supabase] section in .streamlit/secrets.toml:")
-            st.code("""[connections.supabase]\nurl = \"https://your-project.supabase.co\"\nkey = \"your-anon-key-here\"\n""", language="toml")
-            st.error("Or set SUPABASE_URL and SUPABASE_KEY as environment variables.")
-            return None
-        from supabase import create_client
-        return create_client(supabase_url, supabase_key)
-    except Exception as e:
-        st.error(f"Failed to initialize Supabase connection: {e}")
+        # Redirect output to /dev/null
+        with open(os.devnull, 'w') as f:
+            sys.stdout = f
+            sys.stderr = f
+            
+            # Import supabase here to ensure environment variables are set first
+            from supabase import create_client as _create_client
+            
+            supabase_url = None
+            supabase_key = None
+            
+            # 1. Try Streamlit secrets [connections.supabase]
+            if hasattr(st, "secrets"):
+                connections_supabase = st.secrets.get("connections", {}).get("supabase", {})
+                if connections_supabase.get("url") and connections_supabase.get("key"):
+                    supabase_url = connections_supabase.get("url")
+                    supabase_key = connections_supabase.get("key")
+            
+            # 2. Try Streamlit secrets [supabase]
+            if (not supabase_url or not supabase_key) and hasattr(st, "secrets"):
+                supabase_secrets = st.secrets.get("supabase", {})
+                if supabase_secrets.get("url") and supabase_secrets.get("anon_key"):
+                    supabase_url = supabase_secrets.get("url")
+                    supabase_key = supabase_secrets.get("anon_key")
+            
+            # 3. Try environment variables
+            if not supabase_url or not supabase_key:
+                supabase_url = os.environ.get("SUPABASE_URL")
+                supabase_key = os.environ.get("SUPABASE_KEY")
+            
+            if not supabase_url or not supabase_key:
+                return None
+                
+            # Create client with suppressed output
+            client = _create_client(supabase_url, supabase_key)
+            
+            # Test the connection with a simple query
+            try:
+                client.table("toxicology_data").select("id").limit(1).execute()
+            except Exception:
+                pass
+            
+            return client
+            
+    except Exception:
         return None
+    finally:
+        # Restore stdout/stderr
+        sys.stdout = old_stdout
+        sys.stderr = old_stderr
 
 supabase_conn = initialize_supabase_connection()
 if supabase_conn is None:
@@ -174,6 +281,71 @@ TAXONOMIC_MAPPING = {
 }
 ACUTE_ENDPOINTS = ['LC50', 'EC50']
 CHRONIC_ENDPOINTS = ['NOEC', 'LOEC', 'EC10']
+
+# Standard units for different media types
+STANDARD_UNITS = {
+    'Water/Wastewater': 'mg/L',
+    'Soil/Sediment': 'mg/kg',
+    'Air': 'mg/m³',
+    'Biota': 'mg/kg',
+    'Food': 'mg/kg'
+}
+
+# Conversion factors to standard units (to convert from unit to standard unit)
+UNIT_CONVERSIONS = {
+    # Water/Wastewater
+    'mg/L': 1.0,
+    'ug/L': 0.001,
+    'ng/L': 1e-6,
+    'pg/L': 1e-9,
+    'ppm': 1.0,  # Assuming 1ppm = 1mg/L for water
+    'ppb': 0.001,
+    'ppt': 1e-6,
+    # Soil/Sediment
+    'mg/kg': 1.0,
+    'ug/kg': 0.001,
+    'ng/kg': 1e-6,
+    'pg/kg': 1e-9,
+    # Air
+    'mg/m³': 1.0,
+    'ug/m³': 0.001,
+    'ng/m³': 1e-6,
+    'pg/m³': 1e-9,
+}
+
+def convert_units(value: float, from_unit: str, to_media: str) -> Tuple[float, str]:
+    """
+    Convert a value from one unit to the standard unit for its media type.
+    
+    Args:
+        value: The value to convert
+        from_unit: The original unit of the value
+        to_media: The target media type (e.g., 'Water/Wastewater')
+        
+    Returns:
+        Tuple of (converted_value, standard_unit)
+    """
+    if not from_unit or pd.isna(from_unit):
+        return value, ''
+        
+    # Get the standard unit for the media type
+    standard_unit = STANDARD_UNITS.get(to_media, '')
+    if not standard_unit:
+        return value, ''
+    
+    # If already in standard unit, no conversion needed
+    if from_unit.lower() == standard_unit.lower():
+        return value, standard_unit
+    
+    # Get the conversion factor
+    conversion_key = from_unit.lower()
+    for unit, factor in UNIT_CONVERSIONS.items():
+        if unit.lower() == conversion_key:
+            return value * factor, standard_unit
+    
+    # If no conversion found, return original with warning
+    st.warning(f"⚠️ No conversion factor found for unit: {from_unit}. Using as-is.")
+    return value, from_unit
 
 # --- Media Classification based on Units ---
 MEDIA_UNITS = {
@@ -1199,12 +1371,33 @@ if generate_button and is_ready_to_generate: # Check readiness flag
 
         st.write(f"   Found {len(filtered_df)} initial records for the selected chemical(s).")
 
-        # --- Steps 2-6: Remain largely the same ---
+        # --- Steps 3-6: Remain largely the same ---
         # (Endpoint filtering, Data Cleaning, Aggregation, Requirement Checks, SSD Calculation)
         # ... (Keep the existing logic for these steps) ...
         # Make sure to use 'filtered_df' as the starting point
 
-        # 2. Endpoint Filter
+        # 2. Apply Media Filter if any selected
+        if 'All' not in st.session_state.get(f'media_filter{key_suffix}', ['All']):
+            media_col = ECOTOX_EXPECTED_COLS['conc_unit']
+            selected_media = st.session_state.get(f'media_filter{key_suffix}', ['All'])
+            
+            # Convert media units in the data to their respective media types
+            filtered_df['media_type'] = filtered_df[media_col].apply(get_media_from_unit)
+            
+            # Filter based on selected media types
+            media_mask = filtered_df['media_type'].isin(selected_media)
+            filtered_df = filtered_df[media_mask].copy()
+            
+            if filtered_df.empty:
+                st.warning(f"⚠️ No data found for selected media types: {', '.join(selected_media)}.")
+                st.stop()
+                
+            st.write(f"   {len(filtered_df)} records remaining after media filtering.")
+            
+            # Drop the temporary column
+            filtered_df = filtered_df.drop(columns=['media_type'], errors='ignore')
+
+        # 3. Endpoint Filter
         endpoint_col = ECOTOX_EXPECTED_COLS['endpoint']
         if endpoint_type == 'Acute (LC50, EC50)': selected_endpoints = ACUTE_ENDPOINTS
         else: selected_endpoints = CHRONIC_ENDPOINTS
@@ -1219,17 +1412,64 @@ if generate_button and is_ready_to_generate: # Check readiness flag
         unit_col = ECOTOX_EXPECTED_COLS['conc_unit']
         species_col = ECOTOX_EXPECTED_COLS['species_sci']
         group_col = ECOTOX_EXPECTED_COLS['group']
+        
+        # Convert values to numeric
         filtered_df[value_col] = pd.to_numeric(filtered_df[value_col], errors='coerce')
+        
+        # Drop rows with missing values
         initial_rows = len(filtered_df)
-        filtered_df.dropna(subset=[species_col, value_col], inplace=True)
+        filtered_df.dropna(subset=[species_col, value_col, unit_col], inplace=True)
         dropped_rows = initial_rows - len(filtered_df)
-        if dropped_rows > 0: st.write(f"   Dropped {dropped_rows} rows with missing species or concentration.")
+        if dropped_rows > 0: 
+            st.write(f"   Dropped {dropped_rows} rows with missing species, concentration, or unit information.")
+        
+        # Get unique units and media types
+        filtered_df['media_type'] = filtered_df[unit_col].apply(get_media_from_unit)
         valid_units = filtered_df[unit_col].dropna().unique()
-        if len(valid_units) > 1: st.warning(f"⚠️ Warning: Multiple units found: {', '.join(valid_units)}. Using most frequent for labeling.")
-        data_unit = filtered_df[unit_col].mode()[0] if not filtered_df[unit_col].mode().empty else "units"
-        st.write(f"   Using unit for results: '{data_unit}'")
+        
+        # Convert all values to standard units for their media type
+        st.write("   Converting all values to standard units...")
+        converted_values = []
+        standard_units_used = set()
+        
+        for _, row in filtered_df.iterrows():
+            value = row[value_col]
+            unit = row[unit_col]
+            media = row['media_type']
+            
+            # Skip if unit or media is missing
+            if pd.isna(unit) or pd.isna(media) or media == 'Unknown':
+                converted_values.append((value, unit, media, False))
+                continue
+                
+            # Convert to standard unit
+            converted_value, standard_unit = convert_units(value, unit, media)
+            if standard_unit:
+                standard_units_used.add(f"{standard_unit} ({media})")
+                converted_values.append((converted_value, standard_unit, media, True))
+            else:
+                converted_values.append((value, unit, media, False))
+        
+        # Update the dataframe with converted values
+        filtered_df[['converted_value', 'standard_unit', 'media_type', 'conversion_success']] = converted_values
+        
+        # Report on conversions
+        if len(standard_units_used) > 0:
+            st.success(f"   Converted to standard units: {', '.join(sorted(standard_units_used))}")
+        
+        # Check for any failed conversions
+        if not filtered_df['conversion_success'].all():
+            failed_count = len(filtered_df[~filtered_df['conversion_success']])
+            st.warning(f"   ⚠️ Could not convert {failed_count} values due to missing or unsupported units.")
+        
+        # Use converted values for analysis
+        filtered_df[value_col] = filtered_df['converted_value']
+        data_unit = filtered_df['standard_unit'].iloc[0] if not filtered_df.empty else 'units'
         if filtered_df.empty: st.warning("⚠️ No valid numeric data after cleaning."); st.stop()
 
+        # Drop the temporary columns before aggregation
+        filtered_df = filtered_df.drop(['converted_value', 'standard_unit', 'conversion_success'], axis=1, errors='ignore')
+        
         # 4. Aggregate per Species
         st.write(f"4. Aggregating data per species using: '{data_handling}'")
         grouped = filtered_df.groupby(species_col)
@@ -1237,10 +1477,38 @@ if generate_button and is_ready_to_generate: # Check readiness flag
         for name, group in grouped:
             species_group_val = group[group_col].iloc[0] if group_col in group.columns else "Unknown"
             if data_handling == 'Use Geometric Mean':
-                positive_values = group[value_col][group[value_col] > 0]
-                agg_value = np.exp(np.log(positive_values).mean()) if not positive_values.empty else np.nan
+                # Get positive values and ensure they're numeric
+                positive_values = group[value_col][(group[value_col] > 0) & (pd.notna(group[value_col]))]
+                
+                print(f"\nProcessing species: {name}")
+                print(f"Positive values before conversion: {positive_values.tolist()}")
+                
+                # Convert to numpy array and ensure float type
+                try:
+                    positive_values = np.array(positive_values, dtype=float)
+                    print(f"After numpy conversion: {positive_values}")
+                    
+                    if len(positive_values) > 0:
+                        # Calculate geometric mean using numpy's log and mean
+                        log_values = np.log(positive_values)
+                        print(f"Log values: {log_values}")
+                        
+                        mean_log = np.mean(log_values)
+                        print(f"Mean of logs: {mean_log}")
+                        
+                        agg_value = np.exp(mean_log)
+                        print(f"Geometric mean: {agg_value}")
+                    else:
+                        print("No positive values")
+                        agg_value = np.nan
+                except Exception as e:
+                    print(f"Error in calculation: {str(e)}")
+                    agg_value = np.nan
             else: # Most Sensitive
+                print(f"\nProcessing species (min): {name}")
+                print(f"All values: {group[value_col].tolist()}")
                 agg_value = group[value_col].min()
+                print(f"Min value: {agg_value}")
             if pd.notna(agg_value):
                  aggregated_data_list.append({
                      species_col: name, 'broad_group': map_taxonomic_group(species_group_val), 'aggregated_value': agg_value
