@@ -217,81 +217,173 @@ def get_endpoint_rank(endpoint: str) -> int:
         except (ValueError, TypeError): pass
     return ENDPOINT_PREFERENCE_LONG_TERM.get(endpoint_upper, 99)
 
-def calculate_ssd(data, species_col, value_col, p_value, dist_name='Log-Normal'):
-    """Calculates SSD parameters and HCp for various distributions."""
+def calculate_ssd(data, species_col, value_col, p_value, dist_name='Log-Normal', n_boot=1000):
+    """
+    Calculates SSD parameters, HCp, and 95% confidence intervals for various distributions.
+    Confidence intervals are calculated using bootstrapping.
+    """
     valid_data = data[data[value_col] > 0].copy()
-    if valid_data.empty:
-        return None, None, None, "No positive concentrations for SSD calculation."
-    
+    if len(valid_data) < 3: # Need at least 3 points to fit a distribution
+        return None, None, None, "Not enough valid data points (minimum 3 required)."
+
+    # --- Sort data first to ensure alignment for plotting ---
+    sorted_data = valid_data.sort_values(by=value_col).reset_index()
+
     params, hcp, fitted_y_cdf, x_range = None, None, None, None
-    log_data = np.log(valid_data[value_col])
+    lower_ci, upper_ci = None, None
     
     try:
-        if dist_name == 'Log-Normal':
-            mean, std = norm.fit(log_data)
-            params = (mean, std)
-            hcp = np.exp(norm.ppf(p_value, loc=mean, scale=std))
-            x_range = np.linspace(log_data.min() - 1, log_data.max() + 1, 200)
-            fitted_y_cdf = norm.cdf(x_range, loc=mean, scale=std)
+        if dist_name in ['Log-Normal', 'Log-Logistic']:
+            log_data = np.log(sorted_data[value_col])
+            
+            # --- Fit model to the actual data ---
+            if dist_name == 'Log-Normal':
+                mean, std = norm.fit(log_data)
+                params = (mean, std)
+                hcp = np.exp(norm.ppf(p_value, loc=mean, scale=std))
+                x_range = np.linspace(log_data.min() - 1, log_data.max() + 1, 200)
+                fitted_y_cdf = norm.cdf(x_range, loc=mean, scale=std)
+            else: # Log-Logistic
+                loc, scale = logistic.fit(log_data)
+                params = (loc, scale)
+                hcp = np.exp(logistic.ppf(p_value, loc=loc, scale=scale))
+                x_range = np.linspace(log_data.min() - 1, log_data.max() + 1, 200)
+                fitted_y_cdf = logistic.cdf(x_range, loc=loc, scale=scale)
 
-        elif dist_name == 'Log-Logistic':
-            loc, scale = logistic.fit(log_data)
-            params = (loc, scale)
-            hcp = np.exp(logistic.ppf(p_value, loc=loc, scale=scale))
-            x_range = np.linspace(log_data.min() - 1, log_data.max() + 1, 200)
-            fitted_y_cdf = logistic.cdf(x_range, loc=loc, scale=scale)
+            # --- Bootstrap for Confidence Intervals ---
+            boot_cdfs = []
+            for _ in range(n_boot):
+                boot_sample = log_data.sample(n=len(log_data), replace=True)
+                if dist_name == 'Log-Normal':
+                    b_mean, b_std = norm.fit(boot_sample)
+                    boot_cdfs.append(norm.cdf(x_range, loc=b_mean, scale=b_std))
+                else: # Log-Logistic
+                    b_loc, b_scale = logistic.fit(boot_sample)
+                    boot_cdfs.append(logistic.cdf(x_range, loc=b_loc, scale=b_scale))
+            
+            boot_cdfs = np.array(boot_cdfs)
+            lower_ci = np.percentile(boot_cdfs, 2.5, axis=0)
+            upper_ci = np.percentile(boot_cdfs, 97.5, axis=0)
 
         elif dist_name == 'Weibull':
-            shape, loc, scale = weibull_min.fit(valid_data[value_col], floc=0)
+            # Note: Bootstrapping for Weibull is more complex and not implemented here.
+            # It fits on original data, not log-transformed data.
+            shape, loc, scale = weibull_min.fit(sorted_data[value_col], floc=0)
             params = (shape, loc, scale)
             hcp = weibull_min.ppf(p_value, shape, loc=loc, scale=scale)
-            x_range = np.linspace(valid_data[value_col].min() * 0.1, valid_data[value_col].max() * 1.1, 200)
+            x_range = np.linspace(sorted_data[value_col].min() * 0.1, sorted_data[value_col].max() * 1.1, 200)
             fitted_y_cdf = weibull_min.cdf(x_range, shape, loc=loc, scale=scale)
-        
+            # No CI for Weibull for now
+            lower_ci = upper_ci = fitted_y_cdf
+
+        # --- Prepare data for plotting ---
         plot_data = {
-            'empirical_values': np.sort(valid_data[value_col]),
-            'empirical_cdf_percent': (np.arange(1, len(valid_data) + 1) / (len(valid_data) + 1)) * 100,
+            'empirical_values': sorted_data[value_col].values,
+            'empirical_cdf_percent': (np.arange(1, len(sorted_data) + 1) / (len(sorted_data) + 1)) * 100,
             'fitted_x_range': x_range,
             'fitted_y_cdf_percent': fitted_y_cdf * 100,
-            'species': valid_data[species_col].tolist(),
+            'lower_ci_percent': lower_ci * 100,
+            'upper_ci_percent': upper_ci * 100,
+            'species': sorted_data[species_col].tolist(),
+            'groups': sorted_data['broad_group'].tolist(), # Pass taxonomic groups
             'p_value': p_value,
             'dist_name': dist_name
         }
         return hcp, params, plot_data, None
+        
     except Exception as e:
         return None, None, None, f"Error during {dist_name} fit: {str(e)}"
-
 def create_ssd_plot(plot_data, hcp, unit):
-    """Generates the SSD Plotly figure."""
+    """Generates the SSD Plotly figure with confidence intervals and styled markers."""
     if plot_data is None: return go.Figure()
-    
+
     dist_name = plot_data['dist_name']
     is_log_scale = dist_name in ['Log-Normal', 'Log-Logistic']
-    
-    empirical_x = plot_data['empirical_values']
-    fitted_x = np.exp(plot_data['fitted_x_range']) if is_log_scale else plot_data['fitted_x_range']
+
+    # --- Define marker styles for taxonomic groups ---
+    MARKER_STYLES = {
+        'Fish': {'symbol': 'circle', 'color': '#1f77b4'},
+        'Invertebrate': {'symbol': 'diamond', 'color': '#ff7f0e'},
+        'Plant': {'symbol': 'square', 'color': '#2ca02c'},
+        'Amphibian': {'symbol': 'cross', 'color': '#d62728'},
+        'Other': {'symbol': 'x', 'color': '#9467bd'}
+    }
     
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=empirical_x, y=plot_data['empirical_cdf_percent'], mode='markers', name='Species Data',
-        marker=dict(color='#2196F3', size=8, symbol='circle'),
-        hovertext=[f"Species: {sp}<br>Conc: {x:.2g} {unit}" for sp, x in zip(plot_data['species'], empirical_x)], hoverinfo='text'
-    ))
-    fig.add_trace(go.Scatter(
-        x=fitted_x, y=plot_data['fitted_y_cdf_percent'], mode='lines', name=f'{dist_name} Fit', line=dict(color='#FF5252', dash='dash')
-    ))
+
+    # --- Unpack plot data ---
+    empirical_x = plot_data['empirical_values']
+    empirical_y = plot_data['empirical_cdf_percent']
+    species_names = plot_data['species']
+    species_groups = plot_data['groups']
     
+    # Use np.exp() for log-distributions to plot on the original concentration scale
+    fitted_x = np.exp(plot_data['fitted_x_range']) if is_log_scale else plot_data['fitted_x_range']
+    fitted_y = plot_data['fitted_y_cdf_percent']
+    lower_ci = plot_data['lower_ci_percent']
+    upper_ci = plot_data['upper_ci_percent']
+
+    # --- 1. Add Confidence Interval (Fiducial Limits) as a shaded area ---
+    # Draw upper bound, then lower bound, and fill the area between them
+    fig.add_trace(go.Scatter(
+        x=np.concatenate([fitted_x, fitted_x[::-1]]),
+        y=np.concatenate([upper_ci, lower_ci[::-1]]),
+        fill='toself',
+        fillcolor='rgba(255, 82, 82, 0.2)',
+        line=dict(color='rgba(255,255,255,0)'),
+        hoverinfo="none",
+        name='95% Confidence Interval',
+        showlegend=True
+    ))
+
+    # --- 2. Add the main fitted SSD curve ---
+    fig.add_trace(go.Scatter(
+        x=fitted_x, y=fitted_y, mode='lines', 
+        name=f'{dist_name} Fit', line=dict(color='#FF5252', dash='solid', width=2)
+    ))
+
+    # --- 3. Add data points with group-specific markers ---
+    # Create a temporary DataFrame to easily group data for plotting
+    plot_df = pd.DataFrame({
+        'x': empirical_x,
+        'y': empirical_y,
+        'group': species_groups,
+        'species': species_names
+    })
+    
+    for group_name, style in MARKER_STYLES.items():
+        group_df = plot_df[plot_df['group'] == group_name]
+        if not group_df.empty:
+            fig.add_trace(go.Scatter(
+                x=group_df['x'], 
+                y=group_df['y'],
+                mode='markers',
+                name=group_name,
+                marker=dict(symbol=style['symbol'], color=style['color'], size=10,
+                            line=dict(width=1, color='DarkSlateGrey')),
+                hovertext=[f"Group: {g}<br>Species: {sp}<br>Conc: {x:.2g} {unit}" 
+                           for g, sp, x in zip(group_df['group'], group_df['species'], group_df['x'])],
+                hoverinfo='text'
+            ))
+
+    # --- 4. Add the HCp marker ---
     p_value_percent = plot_data['p_value'] * 100
     if hcp is not None and hcp > 0:
-        fig.add_trace(go.Scatter(x=[hcp], y=[p_value_percent], mode='markers', marker=dict(color='yellow', size=14, symbol='x'), name=f'HC{p_value_percent:.0f}'))
+        fig.add_trace(go.Scatter(
+            x=[hcp], y=[p_value_percent], mode='markers', 
+            marker=dict(color='gold', size=14, symbol='star', line=dict(color='black', width=1)),
+            name=f'HC{p_value_percent:.0f}'
+        ))
     
+    # --- 5. Final layout updates ---
     fig.update_layout(
         title=f'Species Sensitivity Distribution ({dist_name} Fit)',
         xaxis_title=f'Concentration ({unit})',
         yaxis_title='Percent of Species Affected (%)',
-        xaxis_type="log" if is_log_scale else "linear",
+        xaxis_type="log", # Always use log scale for better visualization
         yaxis=dict(range=[0, 100]),
-        legend_title='Legend'
+        legend_title='Legend',
+        template='plotly_white' # Cleaner look
     )
     return fig
 
