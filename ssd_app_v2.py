@@ -157,8 +157,13 @@ supabase_conn = initialize_supabase_connection()
 # --- App Configuration ---
 TAXONOMIC_MAPPING = {
     'Fish': ['Fish'],
-    'Invertebrate': ['Aquatic Invertebrates', 'Crustaceans', 'Insects', 'Molluscs', 'Worms', 'Zooplankton'],
-    'Plant': ['Algae', 'Aquatic Plants', 'Plants (Seedlings)', 'Plants'],
+    'Invertebrate': [
+        'Aquatic Invertebrates', 'Invertebrates', 'Crustaceans', 'Crustacean',
+        'Insects', 'Molluscs', 'Mollusc', 'Worms', 'Zooplankton'
+    ],
+    'Plant': [
+        'Algae', 'Aquatic Plants', 'Plants (Seedlings)', 'Plants', 'Algae/Plants'
+    ],
     'Amphibian': ['Amphibians']
 }
 
